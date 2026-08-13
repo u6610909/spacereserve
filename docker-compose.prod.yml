@@ -1,0 +1,46 @@
+# Production (Azure VM). NO build section — the VM is memory-starved and must
+# never build images (CLAUDE.md hard rule 9). CI builds and pushes to GHCR;
+# deploy.sh only pulls and restarts.
+#
+# The image name is a placeholder until the GitHub repo exists.
+services:
+  api:
+    image: ${IMAGE:-ghcr.io/OWNER/spacereserve:latest}
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      APP_VERSION: ${APP_VERSION:-0.1.0}
+      # The ONLY env config permitted in production: the three Azure bootstrap
+      # variables. Every other secret is fetched from Key Vault at boot.
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET}
+    ports:
+      # Bound to loopback only — Nginx on the host proxies to it. Never exposed
+      # publicly; the Azure NSG and UFW keep 4000 closed from outside.
+      - '127.0.0.1:4000:4000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 512m
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-spacereserve}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-spacereserve}
+    # No `ports` — the DB is never published to the host in production.
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-spacereserve}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    mem_limit: 512m
+
+volumes:
+  postgres-data:
