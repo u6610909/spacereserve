@@ -25,6 +25,13 @@ const envSchema = z.object({
    * production refuses to boot without it.
    */
   COOKIE_SECRET: z.string().min(1).default('dev-only-cookie-secret'),
+  /**
+   * Postgres connection string. Optional here because Phase 3 replaces the env
+   * read with a Key Vault fetch (`SpaceReserve-DatabaseUrl`) and production
+   * will refuse to boot without it. Until then it is a dev `.env` value, and
+   * anything that actually needs a database calls `requireDatabaseUrl()`.
+   */
+  DATABASE_URL: z.string().url().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -49,8 +56,24 @@ export const config = {
     .filter(Boolean),
   version: env.APP_VERSION,
   cookieSecret: env.COOKIE_SECRET,
+  databaseUrl: env.DATABASE_URL,
   /** Every route lives under this prefix so Nginx can proxy it cleanly. */
   basePath: '/spacereserve/api/v1',
 } as const;
 
 export type Config = typeof config;
+
+/**
+ * Use this instead of `config.databaseUrl` wherever a connection is actually
+ * required, so a missing value fails loudly at the call site with a message
+ * that says what to do, rather than surfacing as a confusing Prisma error.
+ */
+export function requireDatabaseUrl(): string {
+  if (!config.databaseUrl) {
+    throw new Error(
+      'DATABASE_URL is not configured. Set it in .env for local development; ' +
+        'in production it comes from Key Vault as SpaceReserve-DatabaseUrl (Phase 3).',
+    );
+  }
+  return config.databaseUrl;
+}

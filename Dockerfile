@@ -12,6 +12,15 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json tsconfig.json tsconfig.build.json ./
 COPY src ./src
+# Docker has no conditional COPY, and `prisma/` does not exist until Phase 2.
+# Listing package.json guarantees at least one match so the wildcard is legal
+# now and picks up prisma/ once it lands; the stray copy is build-stage only.
+COPY package.json prisma* ./prisma-src/
+RUN if [ -f ./prisma-src/schema.prisma ]; then \
+        npx prisma generate --schema ./prisma-src/schema.prisma; \
+    else \
+        echo 'no prisma/schema.prisma yet (Phase 2) — skipping prisma generate'; \
+    fi
 RUN npm run build
 
 FROM node:20-alpine AS runtime
@@ -21,6 +30,10 @@ RUN apk add --no-cache curl
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
+# The runtime install is fresh, so it does not contain the client generated in
+# the build stage. `.prisma` exists either way (@prisma/client ships a stub), so
+# this COPY is safe before Phase 2 and carries the real client after it.
+COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/dist ./dist
 
 # Non-root: the `node` user ships with the base image.
