@@ -34,4 +34,11 @@ export default tseslint.config(
     files: ['src/config/**/*.ts'],
     rules: { 'no-restricted-properties': 'off' },
   },
+  {
+    // Hard rule (MASTER_PROMPT §9.3) governs the app's runtime request path
+    // (src/), not one-off CLI tooling. prisma/seed.ts reads PEER_API_KEY_HASH
+    // directly by design (CLAUDE.md — "seed.ts uses to insert FinderAI's row").
+    files: ['prisma/**/*.ts'],
+    rules: { 'no-restricted-properties': 'off' },
+  },
 );

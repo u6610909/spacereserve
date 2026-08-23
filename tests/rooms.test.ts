@@ -1,0 +1,130 @@
+import request from 'supertest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
+import { config } from '../src/config';
+import { disconnectPrisma, getPrisma } from '../src/lib/prisma';
+
+import { buildTestApp, resetDb } from './helpers/testApp';
+
+import type { Express } from 'express';
+
+let app: Express;
+
+async function tokenFor(role: 'STUDENT' | 'STAFF' | 'ADMIN'): Promise<string> {
+  const res = await request(app)
+    .post(`${config.basePath}/auth/dev-login`)
+    .send({ email: `${role.toLowerCase()}@rooms.test`, role });
+  return (res.body as { token: string }).token;
+}
+
+beforeAll(async () => {
+  app = await buildTestApp();
+});
+
+beforeEach(async () => {
+  await resetDb();
+});
+
+afterAll(async () => {
+  await disconnectPrisma();
+});
+
+describe('rooms RBAC', () => {
+  it('STUDENT can list and read rooms but not create one', async () => {
+    const token = await tokenFor('STUDENT');
+
+    const list = await request(app).get(`${config.basePath}/rooms`).set('Authorization', `Bearer ${token}`);
+    expect(list.status).toBe(200);
+
+    const create = await request(app)
+      .post(`${config.basePath}/rooms`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'R-1', building: 'B', capacity: 4 });
+    expect(create.status).toBe(403);
+  });
+
+  it('STAFF can create, update, and set status', async () => {
+    const token = await tokenFor('STAFF');
+
+    const create = await request(app)
+      .post(`${config.basePath}/rooms`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'R-2', building: 'B', capacity: 4, amenities: ['projector'] });
+    expect(create.status).toBe(201);
+    const roomId = (create.body as { room: { id: string } }).room.id;
+
+    const update = await request(app)
+      .patch(`${config.basePath}/rooms/${roomId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ capacity: 8 });
+    expect(update.status).toBe(200);
+    expect((update.body as { room: { capacity: number } }).room.capacity).toBe(8);
+
+    const status = await request(app)
+      .patch(`${config.basePath}/rooms/${roomId}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'OUT_OF_ORDER' });
+    expect(status.status).toBe(200);
+    expect((status.body as { room: { status: string } }).room.status).toBe('OUT_OF_ORDER');
+  });
+
+  it('ADMIN can delete a room with no reservations', async () => {
+    const token = await tokenFor('ADMIN');
+    const create = await request(app)
+      .post(`${config.basePath}/rooms`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'R-3', building: 'B', capacity: 2 });
+    const roomId = (create.body as { room: { id: string } }).room.id;
+
+    const del = await request(app).delete(`${config.basePath}/rooms/${roomId}`).set('Authorization', `Bearer ${token}`);
+    expect(del.status).toBe(204);
+  });
+
+  it('unauthenticated requests are rejected', async () => {
+    const res = await request(app).get(`${config.basePath}/rooms`);
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('rooms filtering', () => {
+  it('filters by capacity and excludes out-of-order rooms only when asked', async () => {
+    const token = await tokenFor('STAFF');
+    await getPrisma().room.createMany({
+      data: [
+        { name: 'Small', building: 'B', capacity: 2, amenities: [] },
+        { name: 'Big', building: 'B', capacity: 20, amenities: [] },
+        { name: 'Broken', building: 'B', capacity: 20, amenities: [], status: 'OUT_OF_ORDER' },
+      ],
+    });
+
+    const res = await request(app)
+      .get(`${config.basePath}/rooms?capacity=10`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const names = (res.body as { rooms: { name: string }[] }).rooms.map((r) => r.name);
+    expect(names).toEqual(expect.arrayContaining(['Big', 'Broken']));
+    expect(names).not.toContain('Small');
+  });
+
+  it('excludes rooms with an overlapping confirmed reservation from availableFrom/To', async () => {
+    const token = await tokenFor('STAFF');
+    const room = await getPrisma().room.create({ data: { name: 'Booked', building: 'B', capacity: 4 } });
+    const organizer = await getPrisma().user.create({
+      data: { adObjectId: 'rooms-test-organizer', email: 'organizer@rooms.test', name: 'Organizer' },
+    });
+    const start = new Date(Date.now() + 60 * 60 * 1000);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    await getPrisma().reservation.create({
+      data: { roomId: room.id, organizerId: organizer.id, startTime: start, endTime: end },
+    });
+
+    const res = await request(app)
+      .get(`${config.basePath}/rooms?availableFrom=${start.toISOString()}&availableTo=${end.toISOString()}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const names = (res.body as { rooms: { name: string }[] }).rooms.map((r) => r.name);
+    expect(names).not.toContain('Booked');
+  });
+});

@@ -5,12 +5,18 @@ import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
 
-import { config } from './config';
+import { config, requireJwtSecret } from './config';
 import { logger } from './lib/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 import { requestId } from './middleware/requestId';
+import { adminRoutes } from './modules/admin/admin.routes';
+import { authRoutes } from './modules/auth/auth.routes';
+import { externalRoutes } from './modules/external/external.routes';
 import { healthRoutes } from './modules/health/health.routes';
+import { reservationsRoutes } from './modules/reservations/reservations.routes';
+import { roomsRoutes } from './modules/rooms/rooms.routes';
+import { searchRoutes } from './modules/search/search.routes';
 
 /**
  * Express assembly, exported separately from `index.ts` so supertest can drive
@@ -45,9 +51,10 @@ export function createApp(): Express {
   );
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: false }));
-  // Signed cookies carry the OIDC `state` + PKCE `code_verifier` (Phase 4).
-  // From Phase 3 the signing key is the Key Vault JWT secret.
-  app.use(cookieParser(config.cookieSecret));
+  // Signed cookies carry the OIDC `state` + PKCE `code_verifier`, and the
+  // callback session cookie (Settled design decisions in CLAUDE.md). Signed
+  // with the same JWT secret — resolveSecrets() must run before createApp().
+  app.use(cookieParser(requireJwtSecret()));
 
   app.use(
     rateLimit({
@@ -61,6 +68,12 @@ export function createApp(): Express {
 
   const api = Router();
   api.use(healthRoutes);
+  api.use('/auth', authRoutes);
+  api.use('/rooms', roomsRoutes);
+  api.use('/reservations', reservationsRoutes);
+  api.use('/search', searchRoutes);
+  api.use('/external', externalRoutes);
+  api.use('/admin', adminRoutes);
   app.use(config.basePath, api);
 
   app.use(notFound);

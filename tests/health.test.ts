@@ -1,11 +1,23 @@
 import request from 'supertest';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { createApp } from '../src/app';
-import { config } from '../src/config';
+import { config, resolveSecrets } from '../src/config';
+import { disconnectPrisma } from '../src/lib/prisma';
 import { resetHealthCache } from '../src/modules/health/health.service';
 
-const app = createApp();
+let app: ReturnType<typeof createApp>;
+
+beforeAll(async () => {
+  // Mirrors real bootstrap order (src/index.ts): secrets resolve before the
+  // app is assembled, so requireDatabaseUrl() sees the test DB connection.
+  await resolveSecrets();
+  app = createApp();
+});
+
+afterAll(async () => {
+  await disconnectPrisma();
+});
 
 describe('GET /health', () => {
   beforeEach(() => {
@@ -18,8 +30,8 @@ describe('GET /health', () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       status: 'ok',
-      db: 'not_configured', // real probe lands in Phase 2
-      keyVault: 'not_configured', // real probe lands in Phase 3
+      db: 'ok', // real SELECT 1 against the CI/local test database (Phase 2)
+      keyVault: 'not_configured', // dev/test never contact the vault (Phase 3)
       version: expect.any(String),
       uptimeSeconds: expect.any(Number),
     });
