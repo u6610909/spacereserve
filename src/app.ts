@@ -12,6 +12,7 @@ import { notFound } from './middleware/notFound';
 import { requestId } from './middleware/requestId';
 import { authRoutes } from './modules/auth/auth.routes';
 import { healthRoutes } from './modules/health/health.routes';
+import { reservationsRoutes } from './modules/reservations/reservations.routes';
 import { roomsRoutes } from './modules/rooms/rooms.routes';
 
 /**
@@ -66,6 +67,7 @@ export function createApp(): Express {
   api.use(healthRoutes);
   api.use('/auth', authRoutes);
   api.use('/rooms', roomsRoutes);
+  api.use('/reservations', reservationsRoutes);
   app.use(config.basePath, api);
 
   app.use(notFound);

@@ -104,11 +104,16 @@ let secrets: VaultSecrets | undefined;
 const TEST_SECRETS: VaultSecrets = {
   databaseUrl: 'postgresql://test:test@localhost:5432/spacereserve_test?schema=public',
   jwtSecret: 'test-only-jwt-secret',
-  adClientId: 'test-only-ad-client-id',
-  adClientSecret: 'test-only-ad-client-secret',
-  geminiApiKey: 'test-only-gemini-api-key',
-  sendGridApiKey: 'test-only-sendgrid-api-key',
-  finderAiApiKey: 'test-only-finderai-api-key',
+  // Left blank on purpose: a non-empty fake value here would pass each
+  // integration's "is this configured?" check and trigger a real outbound
+  // call (AD discovery, a SendGrid send) with garbage credentials — slow,
+  // flaky, and pointless in a test run. Empty exercises the same "not
+  // configured" degraded path dev/prod hit before real credentials exist.
+  adClientId: '',
+  adClientSecret: '',
+  geminiApiKey: '',
+  sendGridApiKey: '',
+  finderAiApiKey: '',
   peerApiKeyHash: 'test-only-peer-api-key-hash',
 };
 
