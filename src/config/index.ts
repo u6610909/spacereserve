@@ -10,9 +10,15 @@
  * env vars permitted in production are the three Azure bootstrap variables
  * (AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_CLIENT_SECRET).
  */
+import { config as loadDotenv } from 'dotenv';
 import { z } from 'zod';
 
 import { loadVaultSecrets, type VaultSecrets } from './keyvault';
+
+// Loads .env into process.env for local dev/test. Production has no .env file
+// on disk (CLAUDE.md hard rule 1) — skipped there as belt-and-braces so a
+// stray file on the host can never leak into a production process.
+if (process.env.NODE_ENV !== 'production') loadDotenv({ quiet: true });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

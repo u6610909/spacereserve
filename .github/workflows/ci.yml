@@ -12,6 +12,23 @@ env:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # Test mode never contacts Key Vault (DECISIONS.md #10), but it does need a
+    # real Postgres for Prisma-backed tests — this service container's
+    # credentials match the fixed TEST_SECRETS.databaseUrl in src/config/index.ts.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: spacereserve_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -32,6 +49,11 @@ jobs:
       # disabling the ESLint rule alone must not be enough to slip past CI.
       - name: Env guard
         run: npm run check:env
+
+      - name: Apply migrations to the test database
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/spacereserve_test?schema=public
 
       - name: Test
         run: npm test

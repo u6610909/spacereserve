@@ -1,5 +1,6 @@
 import { config } from '../../config';
 import { probeKeyVaultReachable } from '../../config/keyvault';
+import { pingDatabase } from '../../lib/prisma';
 
 export type DependencyStatus = 'ok' | 'down' | 'not_configured';
 
@@ -34,9 +35,9 @@ async function cachedProbe(key: string, probe: () => Promise<DependencyStatus>):
   return value;
 }
 
-/** Replaced with a real `SELECT 1` in Phase 2. */
 async function probeDatabase(): Promise<DependencyStatus> {
-  return 'not_configured';
+  const reachable = await pingDatabase();
+  return reachable ? 'ok' : 'down';
 }
 
 /**
