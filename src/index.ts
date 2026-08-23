@@ -6,10 +6,11 @@
  * lands ahead of `createApp()` when Phase 3 arrives.
  */
 import { createApp } from './app';
-import { config } from './config';
+import { config, resolveSecrets } from './config';
 import { logger } from './lib/logger';
 
 async function main(): Promise<void> {
+  await resolveSecrets();
   const app = createApp();
 
   const server = app.listen(config.port, () => {

@@ -1,4 +1,5 @@
 import { config } from '../../config';
+import { probeKeyVaultReachable } from '../../config/keyvault';
 
 export type DependencyStatus = 'ok' | 'down' | 'not_configured';
 
@@ -38,9 +39,15 @@ async function probeDatabase(): Promise<DependencyStatus> {
   return 'not_configured';
 }
 
-/** Replaced with a real Key Vault reachability check in Phase 3. */
+/**
+ * Only production actually contacts the vault — dev/test resolve secrets from
+ * `.env` / fakes and never touch it (see `resolveSecrets()` in `src/config`),
+ * so `not_configured` there is accurate, not a stub.
+ */
 async function probeKeyVault(): Promise<DependencyStatus> {
-  return 'not_configured';
+  if (!config.isProduction) return 'not_configured';
+  const reachable = await probeKeyVaultReachable();
+  return reachable ? 'ok' : 'down';
 }
 
 export async function getHealth(): Promise<HealthReport> {

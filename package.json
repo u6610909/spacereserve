@@ -20,6 +20,8 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@azure/identity": "^4.13.2",
+    "@azure/keyvault-secrets": "^4.11.2",
     "@prisma/client": "^6.19.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
