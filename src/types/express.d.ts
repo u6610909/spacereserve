@@ -9,6 +9,11 @@ declare global {
         email: string;
         role: Role;
       };
+      /** Set by `requireApiKey` after matching the `x-api-key` header's hash. */
+      apiKey?: {
+        id: string;
+        name: string;
+      };
     }
   }
 }

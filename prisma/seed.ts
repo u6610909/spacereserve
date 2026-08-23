@@ -6,9 +6,11 @@
  * used until AU's app registration lands (CLAUDE.md — "Settled design
  * decisions" / AD). Real sign-in overwrites these via the auth upsert.
  */
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 
 import { PrismaClient, Role, RoomStatus } from '@prisma/client';
+
+import { hashApiKey } from '../src/lib/apiKey';
 
 const prisma = new PrismaClient();
 
@@ -132,7 +134,7 @@ async function main(): Promise<void> {
   let keyHash = bootstrapHash;
   if (!keyHash) {
     const devKey = randomBytes(24).toString('hex');
-    keyHash = createHash('sha256').update(devKey).digest('hex');
+    keyHash = hashApiKey(devKey);
     console.log(`[seed] Generated a dev FinderAI API key (save it, shown once): ${devKey}`);
   }
 

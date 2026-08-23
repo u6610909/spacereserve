@@ -10,7 +10,9 @@ import { logger } from './lib/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 import { requestId } from './middleware/requestId';
+import { adminRoutes } from './modules/admin/admin.routes';
 import { authRoutes } from './modules/auth/auth.routes';
+import { externalRoutes } from './modules/external/external.routes';
 import { healthRoutes } from './modules/health/health.routes';
 import { reservationsRoutes } from './modules/reservations/reservations.routes';
 import { roomsRoutes } from './modules/rooms/rooms.routes';
@@ -70,6 +72,8 @@ export function createApp(): Express {
   api.use('/rooms', roomsRoutes);
   api.use('/reservations', reservationsRoutes);
   api.use('/search', searchRoutes);
+  api.use('/external', externalRoutes);
+  api.use('/admin', adminRoutes);
   app.use(config.basePath, api);
 
   app.use(notFound);
