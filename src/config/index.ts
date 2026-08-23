@@ -28,12 +28,6 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().default(''),
   APP_VERSION: z.string().default('0.1.0'),
   /**
-   * Signs the OIDC state / PKCE cookies. Dev fallback only — from Phase 3 this
-   * is replaced by `SpaceReserve-JwtSecret` fetched from Key Vault, and
-   * production refuses to boot without it.
-   */
-  COOKIE_SECRET: z.string().min(1).default('dev-only-cookie-secret'),
-  /**
    * Postgres connection string. Optional here because Phase 3 replaces the env
    * read with a Key Vault fetch (`SpaceReserve-DatabaseUrl`) and production
    * will refuse to boot without it. Until then it is a dev `.env` value, and
@@ -53,6 +47,17 @@ const envSchema = z.object({
   SENDGRID_API_KEY: z.string().optional(),
   FINDERAI_API_KEY: z.string().optional(),
   PEER_API_KEY_HASH: z.string().optional(),
+  /**
+   * Non-secret config, not fetched from Key Vault (CLAUDE.md's secret table
+   * marks AD_TENANT_ID "not secret — config default"). Blank in production —
+   * the only permitted prod env vars are the 3 Azure bootstrap ones — so
+   * anything that needs these must handle "not configured" explicitly rather
+   * than assume a default AU tenant is in use (it is not, until AU's app
+   * registration lands; see CLAUDE.md "Still blocked").
+   */
+  AD_TENANT_ID: z.string().optional(),
+  AD_REDIRECT_URI: z.string().optional(),
+  FINDERAI_BASE_URL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -76,8 +81,10 @@ export const config = {
     .map((o) => o.trim())
     .filter(Boolean),
   version: env.APP_VERSION,
-  cookieSecret: env.COOKIE_SECRET,
   databaseUrl: env.DATABASE_URL,
+  adTenantId: env.AD_TENANT_ID ?? '',
+  adRedirectUri: env.AD_REDIRECT_URI ?? '',
+  finderAiBaseUrl: env.FINDERAI_BASE_URL ?? '',
   /** Every route lives under this prefix so Nginx can proxy it cleanly. */
   basePath: '/spacereserve/api/v1',
 } as const;
@@ -147,4 +154,34 @@ export function requireDatabaseUrl(): string {
     );
   }
   return url;
+}
+
+/**
+ * All other secret consumers (Gemini, SendGrid, FinderAI, AD client
+ * credentials, the peer API key hash) go through this — each of those has its
+ * own designed "not configured" fallback (degraded search, logged email
+ * failure, a clear 503 on the auth routes), so a hard throw here isn't
+ * appropriate the way it is for the database and JWT secret.
+ */
+export function getSecrets(): VaultSecrets {
+  if (!secrets) {
+    throw new Error('Secrets have not been resolved yet — call resolveSecrets() before this.');
+  }
+  return secrets;
+}
+
+/**
+ * Signs both our issued JWTs and the OIDC state / PKCE cookies (CLAUDE.md —
+ * "SpaceReserve-JwtSecret ... also signs cookies"), so there is exactly one
+ * signing key instead of a separate cookie secret.
+ */
+export function requireJwtSecret(): string {
+  const secret = secrets?.jwtSecret;
+  if (!secret) {
+    throw new Error(
+      'JWT secret is not configured. Set JWT_SECRET in .env for local development; ' +
+        'in production it comes from Key Vault as SpaceReserve-JwtSecret.',
+    );
+  }
+  return secret;
 }
