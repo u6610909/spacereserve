@@ -2,6 +2,13 @@
 # never build images (CLAUDE.md hard rule 9). CI builds and pushes to GHCR;
 # deploy.sh only pulls and restarts.
 #
+# Single service, no postgres (DECISIONS.md "THE BIG CHANGE"): the VM is a
+# Standard B2ats v2 (1 GiB RAM) already running MySQL + WordPress + nginx +
+# the lab API — a Postgres container did not fit. Production points at Azure
+# Database for PostgreSQL Flexible Server instead; SpaceReserve-DatabaseUrl
+# in Key Vault carries that connection string (?sslmode=require). Local dev
+# still gets its own Postgres container — see docker-compose.yml.
+#
 # Override IMAGE with a specific tag (e.g. the commit SHA) to deploy or roll back:
 #   IMAGE=ghcr.io/u6610909/spacereserve:<sha> docker compose -f docker-compose.prod.yml up -d
 services:
@@ -12,7 +19,8 @@ services:
       PORT: 4000
       APP_VERSION: ${APP_VERSION:-0.1.0}
       # The ONLY env config permitted in production: the three Azure bootstrap
-      # variables. Every other secret is fetched from Key Vault at boot.
+      # variables. Every other secret — including the database URL — is
+      # fetched from Key Vault at boot.
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
       AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
       AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET}
@@ -20,28 +28,11 @@ services:
       # Bound to loopback only — Nginx on the host proxies to it. Never exposed
       # publicly; the Azure NSG and UFW keep 4000 closed from outside.
       - '127.0.0.1:4000:4000'
-    depends_on:
-      postgres:
-        condition: service_healthy
     restart: unless-stopped
     mem_limit: 512m
-
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-spacereserve}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-spacereserve}
-    # No `ports` — the DB is never published to the host in production.
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-spacereserve}']
-      interval: 10s
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:4000/spacereserve/api/v1/health']
+      interval: 30s
       timeout: 5s
-      retries: 10
-    restart: unless-stopped
-    mem_limit: 512m
-
-volumes:
-  postgres-data:
+      start_period: 15s
+      retries: 3
