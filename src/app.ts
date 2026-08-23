@@ -12,6 +12,7 @@ import { notFound } from './middleware/notFound';
 import { requestId } from './middleware/requestId';
 import { authRoutes } from './modules/auth/auth.routes';
 import { healthRoutes } from './modules/health/health.routes';
+import { roomsRoutes } from './modules/rooms/rooms.routes';
 
 /**
  * Express assembly, exported separately from `index.ts` so supertest can drive
@@ -64,6 +65,7 @@ export function createApp(): Express {
   const api = Router();
   api.use(healthRoutes);
   api.use('/auth', authRoutes);
+  api.use('/rooms', roomsRoutes);
   app.use(config.basePath, api);
 
   app.use(notFound);
