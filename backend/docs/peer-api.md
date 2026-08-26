@@ -41,7 +41,7 @@ gets `reservation: null` rather than a 404, so a caller can't probe our room lis
 endpoint.
 
 **Auth:** `x-api-key` header. We generate FinderAI a 32-byte random hex key and store only its
-SHA-256 hash in the `ApiKey` table (`src/lib/apiKey.ts`); the raw key is never logged or
+SHA-256 hash in the `ApiKey` table (`backend/src/lib/apiKey.ts`); the raw key is never logged or
 committed. Missing or wrong key → `401`.
 
 **Rate limit:** 60 requests/minute per key.
@@ -68,7 +68,7 @@ Authenticated with `SpaceReserve-FinderAIApiKey` from Key Vault (`FINDERAI_API_K
 
 **Status:** FinderAI's real request/response shape isn't finalized yet (target per
 `DECISIONS.md` #11: contract frozen 28 Aug, keys exchanged 4 Sep, joint end-to-end test 16 Sep) —
-we were told not to invent their field names ahead of that. `src/integrations/finderai.ts`
+we were told not to invent their field names ahead of that. `backend/src/integrations/finderai.ts`
 defines a `FinderAiClient` interface and ships a mock implementation (`MockFinderAiClient`, always
 returns `[]`) with the resilience behavior already built and tested:
 

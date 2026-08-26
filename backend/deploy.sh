@@ -11,6 +11,11 @@
 #   IMAGE=ghcr.io/u6610909/spacereserve:<sha> ./deploy.sh   # deploy/roll back to a specific tag
 set -euo pipefail
 
+# Location-independent — works whether invoked as ./deploy.sh from inside
+# backend/ or as backend/deploy.sh from the repo root/wherever it's checked
+# out on the VM.
+cd "$(dirname "$0")"
+
 COMPOSE_FILE="docker-compose.prod.yml"
 HEALTH_URL="http://127.0.0.1:4000/spacereserve/api/v1/health"
 HEALTH_RETRIES=10
