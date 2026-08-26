@@ -233,7 +233,7 @@ Base path: `/spacereserve/api/v1`. Full request/response examples in
 |---|---|---|
 | `GET /health` | none | `{status, db, keyVault, version, uptimeSeconds}` |
 | `GET /auth/login` | none | Redirects to Microsoft; 503 if AD isn't configured |
-| `GET /auth/callback` | none | PKCE/state cookie check; `?mode=json` returns `{token}` |
+| `GET /auth/callback` | none | PKCE/state cookie check; redirects to `FRONTEND_URL` if set, else JSON; `?mode=json` always returns `{token}` |
 | `GET /auth/me` | any role | Current user |
 | `POST /auth/refresh` | any role | Re-issues while still valid (not rotation) |
 | `POST /auth/dev-login` | none | **Dev/test only** — 404s in production |

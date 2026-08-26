@@ -58,6 +58,14 @@ const envSchema = z.object({
   AD_TENANT_ID: z.string().optional(),
   AD_REDIRECT_URI: z.string().optional(),
   FINDERAI_BASE_URL: z.string().optional(),
+  /**
+   * Where /auth/callback redirects after setting the session cookie, for the
+   * React frontend. Same non-secret, blank-by-default pattern as the above —
+   * unset in production until the frontend's real origin is known; the
+   * callback degrades to its old JSON-body response rather than redirecting
+   * to nowhere (see auth.controller.ts).
+   */
+  FRONTEND_URL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -85,6 +93,7 @@ export const config = {
   adTenantId: env.AD_TENANT_ID ?? '',
   adRedirectUri: env.AD_REDIRECT_URI ?? '',
   finderAiBaseUrl: env.FINDERAI_BASE_URL ?? '',
+  frontendUrl: env.FRONTEND_URL ?? '',
   /** Every route lives under this prefix so Nginx can proxy it cleanly. */
   basePath: '/spacereserve/api/v1',
 } as const;

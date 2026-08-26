@@ -37,9 +37,12 @@ message if AD isn't configured yet.
 
 ### `GET /auth/callback?code=&state=&mode=`
 Exchanges the code, upserts the user by `adObjectId`, issues a JWT.
-- Default: sets an httpOnly + Secure (prod) + SameSite=Lax `session` cookie, returns
-  `{ "status": "ok", "user": {...} }`.
-- `?mode=json`: returns `{ "token": "..." }` instead (Postman/demo).
+- Default: sets an httpOnly + Secure (prod) + SameSite=Lax `session` cookie, then `302`s to
+  `FRONTEND_URL` if it's configured (the frontend reads the session via `GET /auth/me` after
+  landing — no token ever touches the URL). Falls back to returning
+  `{ "status": "ok", "user": {...} }` as JSON when `FRONTEND_URL` isn't set.
+- `?mode=json`: always returns `{ "token": "..." }` instead, regardless of `FRONTEND_URL`
+  (Postman/demo).
 
 ### `GET /auth/me`
 Requires auth. Returns `{ "user": { "id", "email", "name", "role" } }`.

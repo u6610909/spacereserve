@@ -71,7 +71,18 @@ export const callback: RequestHandler = async (req, res, next) => {
     }
 
     res.cookie('session', token, { ...baseCookieOptions, maxAge: SESSION_COOKIE_MAX_AGE_MS });
-    res.status(200).json({ status: 'ok', user: sanitizeUser(user) });
+
+    // The frontend's origin isn't configured (still blocked, or a non-frontend
+    // caller like Postman) — degrade to the old JSON response instead of
+    // redirecting to nowhere. No token in the URL either way (CLAUDE.md —
+    // "no tokens in URLs or history"): the frontend reads the session cookie
+    // via GET /auth/me after landing, same as this JSON branch just tells the
+    // caller to do manually.
+    if (!config.frontendUrl) {
+      res.status(200).json({ status: 'ok', user: sanitizeUser(user) });
+      return;
+    }
+    res.redirect(302, config.frontendUrl);
   } catch (err) {
     next(err);
   }
