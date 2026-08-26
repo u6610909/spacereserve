@@ -243,6 +243,7 @@ Base path: `/spacereserve/api/v1`. Full request/response examples in
 | `PATCH /rooms/:id` | STAFF, ADMIN | Audited |
 | `PATCH /rooms/:id/status` | STAFF, ADMIN | Audited |
 | `DELETE /rooms/:id` | STAFF, ADMIN | 409 if the room has reservations; audited |
+| `GET /users?email=` | any role | Exact-match lookup, for inviting attendees by email |
 | `POST /reservations` | any role | Overlap/capacity/out-of-order/window checks |
 | `GET /reservations/mine` | any role | Organized or attending |
 | `GET /reservations/:id` | organizer, attendee, STAFF, ADMIN | |
@@ -264,6 +265,7 @@ Base path: `/spacereserve/api/v1`. Full request/response examples in
 |---|---|---|---|
 | `GET /rooms`, `GET /rooms/:id` | ✅ | ✅ | ✅ |
 | `POST/PATCH/DELETE /rooms*` | ❌ | ✅ | ✅ |
+| `GET /users` | ✅ | ✅ | ✅ |
 | `POST /reservations` | ✅ | ✅ | ✅ |
 | `GET /reservations/mine`, `GET /reservations/:id`\* | ✅ | ✅ | ✅ |
 | `DELETE /reservations/:id`\* | own only | ✅ any | ✅ any |

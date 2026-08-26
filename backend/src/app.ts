@@ -17,6 +17,7 @@ import { healthRoutes } from './modules/health/health.routes';
 import { reservationsRoutes } from './modules/reservations/reservations.routes';
 import { roomsRoutes } from './modules/rooms/rooms.routes';
 import { searchRoutes } from './modules/search/search.routes';
+import { usersRoutes } from './modules/users/users.routes';
 
 /**
  * Express assembly, exported separately from `index.ts` so supertest can drive
@@ -70,6 +71,7 @@ export function createApp(): Express {
   api.use(healthRoutes);
   api.use('/auth', authRoutes);
   api.use('/rooms', roomsRoutes);
+  api.use('/users', usersRoutes);
   api.use('/reservations', reservationsRoutes);
   api.use('/search', searchRoutes);
   api.use('/external', externalRoutes);

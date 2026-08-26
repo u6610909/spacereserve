@@ -93,6 +93,19 @@ Audited.
 
 ---
 
+## Users
+
+### `GET /users?email=`
+Requires auth, any role. Exact-match lookup by email — exists to resolve "invite this person by
+email" into a user id for the reservation-attendee endpoints, not a general directory search.
+
+```json
+{ "users": [{ "id": "uuid", "name": "Jane Doe", "email": "jane@au.edu" }] }
+```
+`users` is `[]` for no match (not a 404). Never returns `role` or `adObjectId`.
+
+---
+
 ## Reservations
 
 ### `POST /reservations`
