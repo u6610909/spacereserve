@@ -105,6 +105,12 @@ export const devLoginController: RequestHandler = async (req, res, next) => {
   }
 };
 
+/** Idempotent — clearing an already-absent cookie is a no-op, not an error. */
+export const logout: RequestHandler = (_req, res) => {
+  res.clearCookie('session', baseCookieOptions);
+  res.status(204).send();
+};
+
 export const me: RequestHandler = async (req, res, next) => {
   try {
     const user = await getUserById(req.user!.id);

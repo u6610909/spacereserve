@@ -51,6 +51,10 @@ Requires auth. Returns `{ "user": { "id", "email", "name", "role" } }`.
 Requires auth. Re-issues a fresh token for the same user (1h expiry) — not refresh-token
 rotation. Returns `{ "token", "user" }`.
 
+### `POST /auth/logout`
+No auth required (clearing an already-absent cookie is a no-op, not an error). Clears the
+`session` cookie. `204 No Content`.
+
 ### `POST /auth/dev-login`
 **Disabled in production** (404). Body:
 
@@ -58,8 +62,10 @@ rotation. Returns `{ "token", "user" }`.
 { "email": "staff@spacereserve.dev", "name": "Test Staff", "role": "STAFF" }
 ```
 
-`name` defaults to `"Dev User"`, `role` defaults to `"STUDENT"`. Upserts a user keyed by
-`dev:<email>` and returns `{ "token", "user" }`.
+`name` defaults to `"Dev User"`, `role` defaults to `"STUDENT"`. Upserts a user by email —
+signing in with a seeded user's email (e.g. `staff@spacereserve.dev`) reuses that same user
+(updating name/role), rather than creating a second row; a new email creates one with a
+`dev:<email>` `adObjectId` placeholder. Returns `{ "token", "user" }`.
 
 ---
 

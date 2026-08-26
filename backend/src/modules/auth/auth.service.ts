@@ -122,15 +122,20 @@ export async function completeLogin(code: string, codeVerifier: string): Promise
 
 /**
  * Dev-only path around the whole OIDC dance — see auth.controller.ts for the
- * production guard. `adObjectId` is deterministic per email so repeated calls
- * reuse the same seeded user instead of creating a new one each time.
+ * production guard. Upserts by email, not a synthetic adObjectId: email is
+ * `@unique` on User, and seed.ts's users (staff@spacereserve.dev, etc.) are
+ * exactly the emails someone testing locally reaches for. Keying by a
+ * `dev:${email}` adObjectId instead would collide with that seeded row's
+ * real adObjectId on the email-uniqueness constraint and 500. Keying by
+ * email means dev-login on a seeded email reuses that same seeded user
+ * (updating name/role, a deliberate convenience for testing role changes),
+ * and a genuinely new email still gets a fresh `dev:${email}` adObjectId.
  */
 export async function devLogin(email: string, name: string, role: Role): Promise<{ user: User; token: string }> {
-  const adObjectId = `dev:${email}`;
   const user = await getPrisma().user.upsert({
-    where: { adObjectId },
-    update: { email, name, role },
-    create: { adObjectId, email, name, role },
+    where: { email },
+    update: { name, role },
+    create: { adObjectId: `dev:${email}`, email, name, role },
   });
   const token = signAccessToken({ sub: user.id, email: user.email, role: user.role });
   return { user, token };

@@ -236,6 +236,7 @@ Base path: `/spacereserve/api/v1`. Full request/response examples in
 | `GET /auth/callback` | none | PKCE/state cookie check; redirects to `FRONTEND_URL` if set, else JSON; `?mode=json` always returns `{token}` |
 | `GET /auth/me` | any role | Current user |
 | `POST /auth/refresh` | any role | Re-issues while still valid (not rotation) |
+| `POST /auth/logout` | none | Clears the session cookie; idempotent |
 | `POST /auth/dev-login` | none | **Dev/test only** — 404s in production |
 | `GET /rooms` | any role | Filters: `capacity`, `building`, `amenities`, `availableFrom`/`availableTo` |
 | `GET /rooms/:id` | any role | |
