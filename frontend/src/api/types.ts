@@ -16,6 +16,7 @@ export interface Room {
   capacity: number;
   amenities: string[];
   status: RoomStatus;
+  imageUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }

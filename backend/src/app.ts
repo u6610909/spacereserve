@@ -7,6 +7,7 @@ import pinoHttp from 'pino-http';
 
 import { config, requireJwtSecret } from './config';
 import { logger } from './lib/logger';
+import { UPLOADS_ROOT } from './lib/roomImages';
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 import { requestId } from './middleware/requestId';
@@ -66,6 +67,10 @@ export function createApp(): Express {
       skip: (req) => req.path.endsWith('/health'),
     }),
   );
+
+  // Room photos — a real directory on disk (volume-mounted in prod so they
+  // survive a redeploy), not the API-versioned prefix; see lib/roomImages.ts.
+  app.use('/spacereserve/uploads', express.static(UPLOADS_ROOT));
 
   const api = Router();
   api.use(healthRoutes);

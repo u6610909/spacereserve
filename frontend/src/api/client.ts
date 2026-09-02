@@ -24,10 +24,14 @@ interface ErrorBody {
  * ever touches this layer.
  */
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  // FormData bodies (image uploads) must NOT get an explicit Content-Type —
+  // the browser sets one with the multipart boundary itself; overriding it
+  // here would send a boundary-less header and the backend couldn't parse it.
+  const isFormData = init?.body instanceof FormData;
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init?.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
     },
   });
@@ -64,4 +68,8 @@ export function patch<T>(path: string, body?: unknown): Promise<T> {
 
 export function del<T>(path: string): Promise<T> {
   return apiFetch<T>(path, { method: 'DELETE' });
+}
+
+export function postForm<T>(path: string, formData: FormData): Promise<T> {
+  return apiFetch<T>(path, { method: 'POST', body: formData });
 }

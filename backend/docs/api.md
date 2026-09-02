@@ -95,7 +95,18 @@ Audited.
 
 ### `DELETE /rooms/:id` — STAFF/ADMIN
 409 if the room has any reservations (cancel/reassign them, or set `OUT_OF_ORDER` instead).
-Audited.
+Audited. Also deletes the room's stored image file, if it had one.
+
+### `POST /rooms/:id/image` — STAFF/ADMIN
+`multipart/form-data`, field name `image`. JPEG/PNG/WebP only, 5MB max. Replaces any existing
+image (old file is deleted). Audited (`ROOM_IMAGE_UPDATED`).
+
+```json
+{ "room": { "...": "...", "imageUrl": "/spacereserve/uploads/rooms/3fa8...c2.png" } }
+```
+
+### `DELETE /rooms/:id/image` — STAFF/ADMIN
+Clears `imageUrl` and deletes the file. Audited (`ROOM_IMAGE_REMOVED`).
 
 ---
 

@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { ErrorBanner } from '../components/ui/ErrorBanner';
 import { Input } from '../components/ui/Input';
+import { RoomImage } from '../components/ui/RoomImage';
 import { Spinner } from '../components/ui/Spinner';
 import { useRooms } from '../hooks/useRooms';
 
@@ -15,27 +16,30 @@ function RoomCard({ room }: { room: Room }) {
   return (
     <Link
       to={`/rooms/${room.id}`}
-      className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md"
+      className="flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white transition-shadow hover:shadow-md"
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="font-semibold text-slate-900">{room.name}</div>
-          <div className="text-xs text-slate-500">{room.building}</div>
+      <RoomImage src={room.imageUrl} alt={room.name} rounded="" />
+      <div className="flex flex-col gap-2 p-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="font-semibold text-slate-900">{room.name}</div>
+            <div className="text-xs text-slate-500">{room.building}</div>
+          </div>
+          <Badge tone={room.status === 'AVAILABLE' ? 'green' : 'red'}>
+            {room.status === 'AVAILABLE' ? 'Available' : 'Out of order'}
+          </Badge>
         </div>
-        <Badge tone={room.status === 'AVAILABLE' ? 'green' : 'red'}>
-          {room.status === 'AVAILABLE' ? 'Available' : 'Out of order'}
-        </Badge>
+        <div className="text-sm text-slate-600">Capacity {room.capacity}</div>
+        {room.amenities.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {room.amenities.map((a) => (
+              <Badge key={a} tone="neutral">
+                {a}
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
-      <div className="text-sm text-slate-600">Capacity {room.capacity}</div>
-      {room.amenities.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {room.amenities.map((a) => (
-            <Badge key={a} tone="neutral">
-              {a}
-            </Badge>
-          ))}
-        </div>
-      )}
     </Link>
   );
 }

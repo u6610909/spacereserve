@@ -5,7 +5,7 @@ import { requireAuth } from '../../middleware/requireAuth';
 import { requireRole } from '../../middleware/requireRole';
 import { validate } from '../../middleware/validate';
 
-import { create, getById, list, remove, setStatus, update } from './rooms.controller';
+import { create, getById, list, remove, removeImage, setImage, setStatus, update } from './rooms.controller';
 import {
   createRoomSchema,
   listRoomsQuerySchema,
@@ -13,6 +13,7 @@ import {
   roomStatusSchema,
   updateRoomSchema,
 } from './rooms.schema';
+import { uploadRoomImage } from './rooms.upload';
 
 export const roomsRoutes = Router();
 
@@ -36,3 +37,19 @@ roomsRoutes.patch(
   setStatus,
 );
 roomsRoutes.delete('/:id', requireAuth, staffOrAdmin, validate({ params: roomIdParamSchema }), remove);
+
+roomsRoutes.post(
+  '/:id/image',
+  requireAuth,
+  staffOrAdmin,
+  validate({ params: roomIdParamSchema }),
+  uploadRoomImage,
+  setImage,
+);
+roomsRoutes.delete(
+  '/:id/image',
+  requireAuth,
+  staffOrAdmin,
+  validate({ params: roomIdParamSchema }),
+  removeImage,
+);

@@ -55,3 +55,19 @@ export function useDeleteRoom() {
     onSuccess: invalidate,
   });
 }
+
+export function useUploadRoomImage() {
+  const invalidate = useInvalidateRooms();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) => roomsApi.uploadRoomImage(id, file),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteRoomImage() {
+  const invalidate = useInvalidateRooms();
+  return useMutation({
+    mutationFn: (id: string) => roomsApi.deleteRoomImage(id),
+    onSuccess: invalidate,
+  });
+}

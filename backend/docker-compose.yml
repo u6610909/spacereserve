@@ -15,6 +15,10 @@ services:
       DATABASE_URL: postgresql://spacereserve:spacereserve@postgres:5432/spacereserve?schema=public
     ports:
       - '4000:4000'
+    volumes:
+      # Room images on the host, not baked into the image — easy to inspect
+      # and survives `docker compose down` without `-v`.
+      - ./uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy

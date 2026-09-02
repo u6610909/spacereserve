@@ -28,6 +28,10 @@ services:
       # Bound to loopback only — Nginx on the host proxies to it. Never exposed
       # publicly; the Azure NSG and UFW keep 4000 closed from outside.
       - '127.0.0.1:4000:4000'
+    volumes:
+      # Named volume so room images survive `docker compose up` pulling a new
+      # image tag — the container itself is thrown away on every deploy.
+      - room-images:/app/uploads
     restart: unless-stopped
     mem_limit: 512m
     healthcheck:
@@ -36,3 +40,6 @@ services:
       timeout: 5s
       start_period: 15s
       retries: 3
+
+volumes:
+  room-images:

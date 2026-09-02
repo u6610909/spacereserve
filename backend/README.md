@@ -84,6 +84,7 @@ erDiagram
         int capacity
         string[] amenities
         RoomStatus status
+        string imageUrl
     }
     Reservation {
         string id PK
@@ -244,6 +245,8 @@ Base path: `/spacereserve/api/v1`. Full request/response examples in
 | `PATCH /rooms/:id` | STAFF, ADMIN | Audited |
 | `PATCH /rooms/:id/status` | STAFF, ADMIN | Audited |
 | `DELETE /rooms/:id` | STAFF, ADMIN | 409 if the room has reservations; audited |
+| `POST /rooms/:id/image` | STAFF, ADMIN | `multipart/form-data`, field `image`, JPEG/PNG/WebP ≤5MB; audited |
+| `DELETE /rooms/:id/image` | STAFF, ADMIN | Audited |
 | `GET /users?email=` | any role | Exact-match lookup, for inviting attendees by email |
 | `POST /reservations` | any role | Overlap/capacity/out-of-order/window checks |
 | `GET /reservations/mine` | any role | Organized or attending |
@@ -312,7 +315,8 @@ Target: `azureuser@20.2.140.191` (Azure VM, East Asia), domain
   existing Let's Encrypt cert.
 - **Compose**: [docker-compose.prod.yml](docker-compose.prod.yml) runs a single `api` container
   (Postgres is Azure Database for PostgreSQL Flexible Server in prod, not a container —
-  see `DECISIONS.md`), bound to `127.0.0.1:4000` only.
+  see `DECISIONS.md`), bound to `127.0.0.1:4000` only. A named volume (`room-images`) holds
+  uploaded room photos so they survive the container being replaced on every deploy.
 - **Deploy**: [`./deploy.sh`](deploy.sh) — pulls the image, runs `prisma migrate deploy` in a
   one-off container, restarts, waits for `/health`, and rolls back to the previous image tag on
   failure. Idempotent, `set -euo pipefail`.

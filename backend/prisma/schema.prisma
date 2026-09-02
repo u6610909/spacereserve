@@ -50,6 +50,7 @@ model Room {
   capacity  Int
   amenities String[] // e.g. ["projector","whiteboard"]
   status    RoomStatus @default(AVAILABLE)
+  imageUrl  String? // served from /spacereserve/uploads/rooms/<file> — see rooms.service.ts
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 

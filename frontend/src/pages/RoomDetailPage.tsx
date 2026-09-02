@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { ErrorBanner } from '../components/ui/ErrorBanner';
 import { Input } from '../components/ui/Input';
+import { RoomImage } from '../components/ui/RoomImage';
 import { Spinner } from '../components/ui/Spinner';
 import { useCreateReservation } from '../hooks/useReservations';
 import { useRoom } from '../hooks/useRooms';
@@ -114,6 +115,8 @@ export function RoomDetailPage() {
       <Link to="/rooms" className="text-sm text-brand-600 hover:underline">
         ← Back to rooms
       </Link>
+
+      <RoomImage src={room.imageUrl} alt={room.name} className="max-w-md" />
 
       <div>
         <div className="flex items-center gap-2">

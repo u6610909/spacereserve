@@ -36,6 +36,12 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/dist ./dist
 
+# Room images are written here at runtime (multer, see lib/roomImages.ts) —
+# a volume is mounted over this in both compose files so uploads survive a
+# redeploy; the mkdir/chown here is just so the directory exists and is
+# writable by the non-root user before that volume is mounted the first time.
+RUN mkdir -p uploads/rooms && chown -R node:node uploads
+
 # Non-root: the `node` user ships with the base image.
 USER node
 

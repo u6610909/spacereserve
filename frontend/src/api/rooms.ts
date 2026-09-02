@@ -1,4 +1,4 @@
-import { del, get, patch, post } from './client';
+import { del, get, patch, post, postForm } from './client';
 import type { Room, RoomStatus } from './types';
 
 export interface RoomFilters {
@@ -50,4 +50,14 @@ export function setRoomStatus(id: string, status: RoomStatus): Promise<{ room: R
 
 export function deleteRoom(id: string): Promise<void> {
   return del(`/rooms/${id}`);
+}
+
+export function uploadRoomImage(id: string, file: File): Promise<{ room: Room }> {
+  const formData = new FormData();
+  formData.set('image', file);
+  return postForm(`/rooms/${id}/image`, formData);
+}
+
+export function deleteRoomImage(id: string): Promise<{ room: Room }> {
+  return del(`/rooms/${id}/image`);
 }

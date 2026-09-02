@@ -1,6 +1,7 @@
 import { writeAuditLog } from '../../lib/audit';
 import { ConflictError, NotFoundError } from '../../lib/errors';
 import { getPrisma } from '../../lib/prisma';
+import { deleteRoomImageFile, roomImagePublicUrl } from '../../lib/roomImages';
 
 import type { CreateRoomInput, ListRoomsQuery, UpdateRoomInput } from './rooms.schema';
 import type { Prisma, Room, RoomStatus } from '@prisma/client';
@@ -58,7 +59,7 @@ export async function setRoomStatus(actorId: string, id: string, status: RoomSta
 }
 
 export async function deleteRoom(actorId: string, id: string): Promise<void> {
-  await getRoomById(id);
+  const room = await getRoomById(id);
 
   const reservationCount = await getPrisma().reservation.count({ where: { roomId: id } });
   if (reservationCount > 0) {
@@ -66,5 +67,29 @@ export async function deleteRoom(actorId: string, id: string): Promise<void> {
   }
 
   await getPrisma().room.delete({ where: { id } });
+  deleteRoomImageFile(room.imageUrl);
   await writeAuditLog({ actorId, action: 'ROOM_DELETED', entity: 'Room', entityId: id });
+}
+
+/** `file` is `Express.Multer.File` — typed loosely here to avoid a hard dependency on multer's types in the service layer. */
+export async function setRoomImage(
+  actorId: string,
+  id: string,
+  file: { filename: string },
+): Promise<Room> {
+  const existing = await getRoomById(id);
+  const imageUrl = roomImagePublicUrl(file.filename);
+
+  const room = await getPrisma().room.update({ where: { id }, data: { imageUrl } });
+  deleteRoomImageFile(existing.imageUrl); // old file, now orphaned — remove after the DB write succeeds
+  await writeAuditLog({ actorId, action: 'ROOM_IMAGE_UPDATED', entity: 'Room', entityId: id });
+  return room;
+}
+
+export async function removeRoomImage(actorId: string, id: string): Promise<Room> {
+  const existing = await getRoomById(id);
+  const room = await getPrisma().room.update({ where: { id }, data: { imageUrl: null } });
+  deleteRoomImageFile(existing.imageUrl);
+  await writeAuditLog({ actorId, action: 'ROOM_IMAGE_REMOVED', entity: 'Room', entityId: id });
+  return room;
 }
