@@ -64,7 +64,13 @@ export function createApp(): Express {
       limit: 100,
       standardHeaders: 'draft-7',
       legacyHeaders: false,
-      skip: (req) => req.path.endsWith('/health'),
+      // Also skips /spacereserve/uploads (room photos): a plain express.static
+      // read, not a business-logic endpoint, and one room grid page already
+      // requests a dozen-plus thumbnails — sharing the API budget with those
+      // meant a few page loads could 429 real API calls. Caught this by
+      // actually loading the browse page after seeding real photos, not just
+      // by testing the upload endpoint in isolation.
+      skip: (req) => req.path.endsWith('/health') || req.path.startsWith('/spacereserve/uploads/'),
     }),
   );
 

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 import { naturalSearch } from '../api/search';
 import type { Room } from '../api/types';
+import { AmenityIcon } from '../components/ui/AmenityIcon';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { ErrorBanner } from '../components/ui/ErrorBanner';
@@ -11,6 +12,18 @@ import { Input } from '../components/ui/Input';
 import { RoomImage } from '../components/ui/RoomImage';
 import { Spinner } from '../components/ui/Spinner';
 import { useRooms } from '../hooks/useRooms';
+
+function PeopleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-3.5 w-3.5 shrink-0">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16 21v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 19.5V21M21 21v-1.5a3.5 3.5 0 0 0-2.5-3.35M14.5 4.16a3.5 3.5 0 0 1 0 6.68M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+      />
+    </svg>
+  );
+}
 
 function RoomCard({ room }: { room: Room }) {
   return (
@@ -23,19 +36,23 @@ function RoomCard({ room }: { room: Room }) {
         <div className="flex items-start justify-between">
           <div>
             <div className="font-semibold text-slate-900">{room.name}</div>
-            <div className="text-xs text-slate-500">{room.building}</div>
+            <div className="text-xs text-slate-500">{room.building} building</div>
           </div>
           <Badge tone={room.status === 'AVAILABLE' ? 'green' : 'red'}>
             {room.status === 'AVAILABLE' ? 'Available' : 'Out of order'}
           </Badge>
         </div>
-        <div className="text-sm text-slate-600">Capacity {room.capacity}</div>
+        <div className="flex items-center gap-1.5 text-sm text-slate-600">
+          <PeopleIcon />
+          Fits {room.capacity}
+        </div>
         {room.amenities.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-x-3 gap-y-1 border-t border-slate-100 pt-2">
             {room.amenities.map((a) => (
-              <Badge key={a} tone="neutral">
+              <span key={a} className="flex items-center gap-1 text-xs capitalize text-slate-500">
+                <AmenityIcon amenity={a} className="h-3.5 w-3.5" />
                 {a}
-              </Badge>
+              </span>
             ))}
           </div>
         )}

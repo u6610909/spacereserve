@@ -10,14 +10,19 @@ export function RoomImage({
   alt,
   className = '',
   rounded = 'rounded-lg',
+  aspect = 'aspect-[4/3]',
 }: {
   src: string | null | undefined;
   alt: string;
   className?: string;
   rounded?: string;
+  /** Grid/table thumbnails stay 4:3 everywhere (the whole point is a
+   * consistent frame); a hero shot on the detail page is the one
+   * deliberate exception — pass `aspect-[16/9]` there. */
+  aspect?: string;
 }) {
   return (
-    <div className={`aspect-[4/3] w-full shrink-0 overflow-hidden ${rounded} bg-slate-100 ${className}`}>
+    <div className={`${aspect} w-full shrink-0 overflow-hidden ${rounded} bg-slate-100 ${className}`}>
       {src ? (
         <img src={src} alt={alt} loading="lazy" className="h-full w-full object-cover" />
       ) : (

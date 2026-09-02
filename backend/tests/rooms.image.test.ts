@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { config } from '../src/config';
 import { disconnectPrisma, getPrisma } from '../src/lib/prisma';
-import { ROOM_IMAGES_DIR } from '../src/lib/roomImages';
+import { ROOM_IMAGES_DIR, ROOM_IMAGES_URL_PREFIX } from '../src/lib/roomImages';
 
 import { buildTestApp, resetDb } from './helpers/testApp';
 
@@ -53,7 +53,7 @@ describe('POST /rooms/:id/image', () => {
       .attach('image', TINY_PNG, { filename: 'room.png', contentType: 'image/png' });
 
     expect(res.status).toBe(200);
-    expect(res.body.room.imageUrl).toMatch(/^\/spacereserve\/uploads\/rooms\/.+\.png$/);
+    expect(res.body.room.imageUrl).toMatch(new RegExp(`^${ROOM_IMAGES_URL_PREFIX}/.+\\.png$`));
 
     const filename = res.body.room.imageUrl.split('/').pop() as string;
     expect(readdirSync(ROOM_IMAGES_DIR)).toContain(filename);
