@@ -41,7 +41,10 @@ export async function interpretQuery(query: string): Promise<GeminiInterpretatio
   try {
     const client = new GoogleGenerativeAI(geminiApiKey);
     const model = client.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      // gemini-1.5-flash was retired from the v1beta generateContent endpoint
+      // (404 "not found for API version v1beta"); 2.0-flash is the current
+      // free-tier model that still supports responseSchema JSON output.
+      model: 'gemini-2.0-flash',
       generationConfig: { responseMimeType: 'application/json', responseSchema },
     });
 
