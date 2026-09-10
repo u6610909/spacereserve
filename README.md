@@ -19,8 +19,8 @@ Key Vault secret table).
 
 ## Contributing
 
-See **[TEAM.md](TEAM.md)** — branch per phase/feature, pull request into `main`, CI must pass
-before merge, no direct commits to `main`.
+Branch per feature, open a pull request into `main`, CI must pass before merge.
+No direct commits to `main`.
 
 ## Team
 

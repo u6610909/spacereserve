@@ -17,7 +17,7 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    # Test mode never contacts Key Vault (DECISIONS.md #10), but it does need a
+    # Test mode never contacts Key Vault (docs/architecture.md), but it does need a
     # real Postgres for Prisma-backed tests — this service container's
     # credentials match the fixed TEST_SECRETS.databaseUrl in src/config/index.ts.
     services:
@@ -65,7 +65,7 @@ jobs:
         run: npm test
 
   image:
-    # Images are built here, never on the VM (CLAUDE.md hard rule 9).
+    # Images are built here, never on the VM (project rule).
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest

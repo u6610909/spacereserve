@@ -3,7 +3,7 @@
 The code is deploy-ready. This is the checklist for the first real deploy —
 create the Azure resources, plug the values in, run two scripts.
 
-Target VM (per CLAUDE.md): `azureuser@20.2.140.191`,
+Target VM (per docs/architecture.md): `azureuser@20.2.140.191`,
 domain `ratchanon-bad2026.eastasia.cloudapp.azure.com`, app on port 4000.
 It already runs nginx + MySQL + WordPress (`/content`) + the pm2 lab API
 (`/api`) — **none of those get touched**.
@@ -14,7 +14,7 @@ It already runs nginx + MySQL + WordPress (`/content`) + the pm2 lab API
 
 ### 1. Azure Database for PostgreSQL — Flexible Server
 
-Not a container (the 1 GiB VM can't fit one — DECISIONS.md). Free tier
+Not a container (the 1 GiB VM can't fit one — docs/architecture.md). Free tier
 (B1ms, 12 months) is enough.
 
 - Firewall: allow **only** the VM's public IP `20.2.140.191`. Not `0.0.0.0/0`.
@@ -59,7 +59,7 @@ isn't ready yet.
 A **second** app registration, separate from step 2. Must live in a tenant
 `@au.edu` accounts can sign into (AU's tenant is
 `c1f3dc23-b7f8-48d3-9b5d-2b12f158f01f`; a personal tenant with seeded
-member users works until AU issues one — see CLAUDE.md "Settled design
+member users works until AU issues one — see docs/architecture.md "Settled design
 decisions").
 
 - Authentication → Add a platform → Web → Redirect URI:
@@ -74,7 +74,7 @@ decisions").
 
 GitHub → repo → Packages → `spacereserve` → Package settings → Change
 visibility → Public. Then `docker compose pull` needs no login on the VM
-(DECISIONS.md #5).
+(docs/architecture.md).
 
 ---
 
@@ -133,7 +133,7 @@ health check.
 
 ---
 
-## Part D — Verify (every time — CLAUDE.md hard rule 4)
+## Part D — Verify (every time — project rule)
 
 ```bash
 curl -s  https://ratchanon-bad2026.eastasia.cloudapp.azure.com/spacereserve/api/v1/health

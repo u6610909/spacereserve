@@ -1,7 +1,7 @@
 # Peer API — Finder Portal (FinderAI)
 
 Partner: **Finder Portal (FinderAI)**, campus Lost & Found. This document is what we hand them
-directly — see also CLAUDE.md's "Settled design decisions" for the URL.
+directly — see also docs/architecture.md for the URL.
 
 ## We expose: active booking lookup
 
@@ -66,8 +66,8 @@ x-api-key: <key FinderAI issues to us>
 
 Authenticated with `SpaceReserve-FinderAIApiKey` from Key Vault (`FINDERAI_API_KEY` in dev).
 
-**Status:** FinderAI's real request/response shape isn't finalized yet (target per
-`DECISIONS.md` #11: contract frozen 28 Aug, keys exchanged 4 Sep, joint end-to-end test 16 Sep) —
+**Status:** FinderAI's real request/response shape isn't finalized yet (target: contract
+frozen 28 Aug, keys exchanged 4 Sep, joint end-to-end test 16 Sep) —
 we were told not to invent their field names ahead of that. `backend/src/integrations/finderai.ts`
 defines a `FinderAiClient` interface and ships a mock implementation (`MockFinderAiClient`, always
 returns `[]`) with the resilience behavior already built and tested:

@@ -42,8 +42,8 @@ let cachedClient: SecretClient | undefined;
 function getClient(): SecretClient {
   if (!KEY_VAULT_URL) {
     throw new Error(
-      'Key Vault URL is not configured. Production cannot boot without it — see ' +
-        "CLAUDE.md's \"Still blocked\" list for <<KEY_VAULT_URL>>.",
+      'Key Vault URL is not configured. Production cannot boot without it — set ' +
+        'AZURE_KEY_VAULT_URL (see docs/architecture.md).',
     );
   }
   if (!cachedClient) {

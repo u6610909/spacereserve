@@ -17,7 +17,7 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       '@typescript-eslint/no-explicit-any': 'error',
-      // Hard rule (MASTER_PROMPT §9.3): src/config/ is the ONLY process.env reader.
+      // Hard rule (the "process.env only in src/config" rule): src/config/ is the ONLY process.env reader.
       // Overridden for src/config/** below. Also enforced by scripts/check-env-guard.sh
       // in CI so disabling this rule alone does not open the door.
       'no-restricted-properties': [
@@ -35,9 +35,9 @@ export default tseslint.config(
     rules: { 'no-restricted-properties': 'off' },
   },
   {
-    // Hard rule (MASTER_PROMPT §9.3) governs the app's runtime request path
+    // Hard rule (the "process.env only in src/config" rule) governs the app's runtime request path
     // (src/), not one-off CLI tooling. prisma/seed.ts reads PEER_API_KEY_HASH
-    // directly by design (CLAUDE.md — "seed.ts uses to insert FinderAI's row").
+    // directly by design (docs/architecture.md — "seed.ts uses to insert FinderAI's row").
     files: ['prisma/**/*.ts'],
     rules: { 'no-restricted-properties': 'off' },
   },

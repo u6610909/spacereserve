@@ -1,5 +1,5 @@
 /**
- * Bootstrap order (MASTER_PROMPT §10):
+ * Bootstrap order (docs/architecture.md):
  *   Key Vault (Phase 3) -> config -> Prisma (Phase 2) -> Express
  *
  * Nothing may listen on a port before secrets are resolved, so the vault step

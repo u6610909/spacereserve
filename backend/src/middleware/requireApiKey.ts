@@ -4,7 +4,7 @@ import { hashApiKey } from '../lib/apiKey';
 import { UnauthorizedError } from '../lib/errors';
 import { getPrisma } from '../lib/prisma';
 
-/** Peer-facing auth (MASTER_PROMPT §7) — `x-api-key`, not JWT. Never stores or logs the raw key. */
+/** Peer-facing auth (docs/architecture.md) — `x-api-key`, not JWT. Never stores or logs the raw key. */
 export const requireApiKey: RequestHandler = async (req, _res, next) => {
   try {
     const rawKey = req.header('x-api-key');

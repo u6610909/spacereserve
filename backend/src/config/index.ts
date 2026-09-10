@@ -1,7 +1,7 @@
 /**
  * The ONLY module in the codebase allowed to read `process.env`.
  *
- * Hard rule (MASTER_PROMPT §9.3): no `process.env` access anywhere outside
+ * Hard rule (the "process.env only in src/config" rule): no `process.env` access anywhere outside
  * `src/config/`. Enforced by an ESLint rule and by `scripts/check-env-guard.sh`
  * in CI, so the rule cannot be silently disabled.
  *
@@ -16,7 +16,7 @@ import { z } from 'zod';
 import { loadVaultSecrets, type VaultSecrets } from './keyvault';
 
 // Loads .env into process.env for local dev/test. Production has no .env file
-// on disk (CLAUDE.md hard rule 1) — skipped there as belt-and-braces so a
+// on disk (project rule) — skipped there as belt-and-braces so a
 // stray file on the host can never leak into a production process.
 if (process.env.NODE_ENV !== 'production') loadDotenv({ quiet: true });
 
@@ -35,7 +35,7 @@ const envSchema = z.object({
    */
   DATABASE_URL: z.string().url().optional(),
   /**
-   * Dev-only fallbacks mirroring the Key Vault secret table (see CLAUDE.md).
+   * Dev-only fallbacks mirroring the Key Vault secret table.
    * Production never reads these — `resolveSecrets()` fetches them from the
    * vault instead. All optional: most aren't needed until their own phase
    * (e.g. Gemini isn't used until Phase 7) lands.
@@ -48,12 +48,12 @@ const envSchema = z.object({
   FINDERAI_API_KEY: z.string().optional(),
   PEER_API_KEY_HASH: z.string().optional(),
   /**
-   * Non-secret config, not fetched from Key Vault (CLAUDE.md's secret table
+   * Non-secret config, not fetched from Key Vault (docs/architecture.md
    * marks AD_TENANT_ID "not secret — config default"). Blank in production —
    * the only permitted prod env vars are the 3 Azure bootstrap ones — so
    * anything that needs these must handle "not configured" explicitly rather
    * than assume a default AU tenant is in use (it is not, until AU's app
-   * registration lands; see CLAUDE.md "Still blocked").
+   * registration lands; see docs/architecture.md).
    */
   AD_TENANT_ID: z.string().optional(),
   AD_REDIRECT_URI: z.string().optional(),
@@ -112,7 +112,7 @@ export type Config = typeof config;
 
 /**
  * Resolved once at boot, before Express starts (see `src/index.ts`). Three
- * modes, per DECISIONS.md #10:
+ * modes, per docs/architecture.md:
  *   - test:        fixed fake values, vault and env are never touched.
  *   - development:  falls back to `.env` (dev fallback keys above).
  *   - production:  fetched from Key Vault; throws (and the app refuses to
@@ -195,7 +195,7 @@ export function getSecrets(): VaultSecrets {
 }
 
 /**
- * Signs both our issued JWTs and the OIDC state / PKCE cookies (CLAUDE.md —
+ * Signs both our issued JWTs and the OIDC state / PKCE cookies (docs/architecture.md —
  * "SpaceReserve-JwtSecret ... also signs cookies"), so there is exactly one
  * signing key instead of a separate cookie secret.
  */

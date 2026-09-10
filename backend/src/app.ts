@@ -54,7 +54,7 @@ export function createApp(): Express {
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: false }));
   // Signed cookies carry the OIDC `state` + PKCE `code_verifier`, and the
-  // callback session cookie (Settled design decisions in CLAUDE.md). Signed
+  // callback session cookie (see docs/architecture.md). Signed
   // with the same JWT secret — resolveSecrets() must run before createApp().
   app.use(cookieParser(requireJwtSecret()));
 

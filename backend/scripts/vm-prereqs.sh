@@ -3,7 +3,7 @@
 # before the first ./deploy.sh. Idempotent — safe to re-run.
 #
 # What it does NOT touch: nginx, MySQL, WordPress, the pm2 lab API, or the
-# existing SSL cert (CLAUDE.md hard rules 4 & 9). The SpaceReserve nginx
+# existing SSL cert (project rules). The SpaceReserve nginx
 # location block is added by hand — see nginx/spacereserve.conf and DEPLOY.md.
 set -euo pipefail
 
@@ -13,7 +13,7 @@ fail() { printf '[vm-prereqs] ERROR: %s\n' "$1" >&2; exit 1; }
 [ "$(id -u)" -ne 0 ] || fail "run as a normal user with sudo, not as root directly"
 command -v sudo >/dev/null 2>&1 || fail "sudo not available"
 
-# --- 1. Swap: 1 GB -> 4 GB (CLAUDE.md hard rule 9) ------------------------
+# --- 1. Swap: 1 GB -> 4 GB (project rule) ------------------------
 current_swap_kb=$(awk '/SwapTotal/ {print $2}' /proc/meminfo)
 if [ "${current_swap_kb:-0}" -lt 3800000 ]; then
   log "swap is $((current_swap_kb / 1024)) MB — growing to 4 GB"
@@ -47,7 +47,7 @@ else
   log "added $USER to the docker group — log out and back in for it to take effect"
 fi
 
-# --- 3. UFW: 22 / 80 / 443 only (CLAUDE.md deployment) ------------------
+# --- 3. UFW: 22 / 80 / 443 only (docs/architecture.md) ------------------
 if command -v ufw >/dev/null 2>&1; then
   log "configuring UFW (allow 22, 80, 443 before enabling — never the reverse)"
   sudo ufw allow 22/tcp

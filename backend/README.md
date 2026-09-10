@@ -298,7 +298,7 @@ Partner: **Finder Portal (FinderAI)**, campus Lost & Found. Full contract in
 - **Status:** their real endpoint/response contract isn't final yet, so
   [src/integrations/finderai.ts](src/integrations/finderai.ts) defines the client behind an
   interface with a local mock — check-in already works end to end and returns
-  `lostItemNotice: null` until the real client is wired in. Target dates (DECISIONS.md #11):
+  `lostItemNotice: null` until the real client is wired in. Target dates:
   contract frozen 28 Aug, keys exchanged 4 Sep, joint end-to-end test 16 Sep.
 - **Keys:** each side generates a 32-byte random hex key for the other, stores only its SHA-256
   hash (`ApiKey.keyHash`), and never logs or commits the raw value.
@@ -321,7 +321,7 @@ Target: `azureuser@20.2.140.191` (Azure VM, East Asia), domain
   existing Let's Encrypt cert.
 - **Compose**: [docker-compose.prod.yml](docker-compose.prod.yml) runs a single `api` container
   (Postgres is Azure Database for PostgreSQL Flexible Server in prod, not a container —
-  see `DECISIONS.md`), bound to `127.0.0.1:4000` only. A named volume (`room-images`) holds
+  see `docs/architecture.md`), bound to `127.0.0.1:4000` only. A named volume (`room-images`) holds
   uploaded room photos so they survive the container being replaced on every deploy.
 - **Config on the VM**: [`.env.prod.example`](.env.prod.example) → `.env` holds exactly four
   values — the three Key Vault service-principal credentials plus the vault URL. Every other

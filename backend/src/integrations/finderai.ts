@@ -2,10 +2,10 @@ import { logger } from '../lib/logger';
 
 /**
  * FinderAI's real request/response shape for `/api/v1/items/by-location` is
- * still unknown (MASTER_PROMPT §14 — "get their real contract before writing
+ * still unknown (docs/architecture.md — "get their real contract before writing
  * the client; do not invent fields"). This interface is our own placeholder
  * shape, not theirs; `MockFinderAiClient` is the only implementation until
- * the contract lands (target per DECISIONS.md #11: keys exchanged 4 Sep,
+ * the contract lands (target per docs/architecture.md: keys exchanged 4 Sep,
  * joint test 16 Sep). Swapping in a real HTTP client is then a matter of
  * implementing `FinderAiClient` against their actual schema — nothing that
  * calls `lookupLostItems` below needs to change.
@@ -66,7 +66,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 /**
  * `null` means "couldn't reach FinderAI" — check-in must still succeed with
- * `lostItemNotice: null` (MASTER_PROMPT §7), never a 500.
+ * `lostItemNotice: null` (docs/architecture.md), never a 500.
  */
 export async function lookupLostItems(roomId: string, at: Date): Promise<LostItemNotice[] | null> {
   const key = cacheKey(roomId, at);

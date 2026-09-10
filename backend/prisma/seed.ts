@@ -3,7 +3,7 @@
  * reservations, and the FinderAI peer API key row.
  *
  * `adObjectId` values here are placeholders for the personal Entra tenant
- * used until AU's app registration lands (CLAUDE.md — "Settled design
+ * used until AU's app registration lands (docs/architecture.md — "Settled design
  * decisions" / AD). Real sign-in overwrites these via the auth upsert.
  */
 import { randomBytes } from 'node:crypto';
@@ -127,7 +127,7 @@ async function main(): Promise<void> {
 
   // Peer API: FinderAI's key. `SpaceReserve-PeerApiKeyHash` in Key Vault is the
   // bootstrap hash for this row on a fresh database — see .env.example /
-  // CLAUDE.md's Key Vault table. Falls back to a freshly generated dev key
+  // docs/architecture.md. Falls back to a freshly generated dev key
   // (printed once) when that env var isn't set, so `prisma db seed` still
   // works before Key Vault is wired up locally.
   const bootstrapHash = process.env.PEER_API_KEY_HASH;

@@ -7,7 +7,7 @@ import { logger } from './logger';
 /**
  * Shared Prisma client.
  *
- * Only services may import this (MASTER_PROMPT §10) — controllers and
+ * Only services may import this (docs/architecture.md) — controllers and
  * middleware go through a service.
  *
  * The connection string is passed in from `src/config` rather than read from
