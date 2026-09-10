@@ -1,0 +1,53 @@
+# Local development only. Production uses docker-compose.prod.yml, which pulls
+# a pre-built image from GHCR instead of building on the host.
+services:
+  api:
+    build:
+      context: .
+      target: runtime
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      LOG_LEVEL: debug
+      APP_VERSION: 0.1.0
+      # Postgres is wired into the app in Phase 2; the container is here now so
+      # `docker compose up` already gives a working DB to develop against.
+      DATABASE_URL: postgresql://spacereserve:spacereserve@postgres:5432/spacereserve?schema=public
+    ports:
+      - '4000:4000'
+    volumes:
+      # Room images on the host, not baked into the image — easy to inspect
+      # and survives `docker compose down` without `-v`.
+      - ./uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: spacereserve
+      POSTGRES_PASSWORD: spacereserve
+      POSTGRES_DB: spacereserve
+    ports:
+      # Published in dev only, for psql / Prisma Studio from the host.
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U spacereserve']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - '8080:8080'
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
