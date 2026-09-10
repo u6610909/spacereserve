@@ -43,12 +43,13 @@ export async function interpretQuery(query: string): Promise<GeminiInterpretatio
     const model = client.getGenerativeModel(
       {
         // Pinned model names keep getting retired from the v1beta
-        // generateContent endpoint (1.5-flash -> 404, then 2.0-flash -> 404
-        // "use gemini-3.6-flash"). `gemini-flash-latest` is Google's moving
-        // alias for the current free-tier flash model, which still honours
-        // responseSchema JSON output — failure here just falls back to keyword
-        // search with "degraded": true, never a 500.
-        model: 'gemini-flash-latest',
+        // generateContent endpoint (1.5-flash -> 404, 2.0-flash -> 404).
+        // `gemini-flash-lite-latest` is Google's moving alias for the light,
+        // high-throughput flash model — plenty for pulling a few fields out of
+        // one sentence, and its quota is roomier so the free tier 503s
+        // ("model is experiencing high demand") far less often. Any failure
+        // still falls back to keyword search with "degraded": true, never a 500.
+        model: 'gemini-flash-lite-latest',
         generationConfig: { responseMimeType: 'application/json', responseSchema },
       },
       // `baseUrl` routes the call through the region-unblocked proxy in
@@ -69,7 +70,17 @@ export async function interpretQuery(query: string): Promise<GeminiInterpretatio
       'Omit (null) any field the request does not mention.',
     ].join(' ');
 
-    const result = await model.generateContent(prompt);
+    // One quick retry on a transient upstream 5xx (the free tier occasionally
+    // answers 503 "high demand"); anything still failing after that degrades.
+    let result;
+    try {
+      result = await model.generateContent(prompt);
+    } catch (err) {
+      const status = (err as { status?: number }).status ?? 0;
+      if (status < 500) throw err;
+      await new Promise((r) => setTimeout(r, 400));
+      result = await model.generateContent(prompt);
+    }
     const parsed: unknown = JSON.parse(result.response.text());
     return geminiResultSchema.parse(parsed);
   } catch (err) {
