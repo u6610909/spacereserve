@@ -12,6 +12,12 @@ import type { Role } from '../api/types';
 // keeps the form itself from showing a dead UI there.
 const ALLOW_DEV_LOGIN = import.meta.env.DEV || import.meta.env.VITE_ALLOW_DEV_LOGIN === 'true';
 
+const QUICK_LOGINS: { role: Role; label: string; email: string }[] = [
+  { role: 'STUDENT', label: 'Student', email: 'student@demo.dev' },
+  { role: 'STAFF', label: 'Staff', email: 'staff@demo.dev' },
+  { role: 'ADMIN', label: 'Admin', email: 'admin@demo.dev' },
+];
+
 export function SignInPage() {
   const { user, isLoading } = useAuth();
   const refreshAuth = useRefreshAuth();
@@ -19,21 +25,20 @@ export function SignInPage() {
   const [name, setName] = useState('');
   const [role, setRole] = useState<Role>('STUDENT');
   const [error, setError] = useState<unknown>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<Role | 'form' | null>(null);
 
   if (!isLoading && user) return <Navigate to="/rooms" replace />;
 
-  async function handleDevLogin(e: React.FormEvent) {
-    e.preventDefault();
+  async function signIn(loginEmail: string, loginName: string, loginRole: Role, key: Role | 'form') {
     setError(null);
-    setSubmitting(true);
+    setSubmitting(key);
     try {
-      await devLogin(email, name || 'Dev User', role);
+      await devLogin(loginEmail, loginName, loginRole);
       await refreshAuth();
     } catch (err) {
       setError(err);
     } finally {
-      setSubmitting(false);
+      setSubmitting(null);
     }
   }
 
@@ -58,31 +63,55 @@ export function SignInPage() {
             <div className="h-px flex-1 bg-slate-200" />
           </div>
 
-          <form onSubmit={(e) => void handleDevLogin(e)} className="flex flex-col gap-3">
-            <Input
-              label="Email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.edu"
-            />
-            <Input
-              label="Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Dev User"
-            />
-            <Select label="Role" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-              <option value="STUDENT">Student</option>
-              <option value="STAFF">Staff</option>
-              <option value="ADMIN">Admin</option>
-            </Select>
-            <ErrorBanner error={error} />
-            <Button type="submit" variant="secondary" disabled={submitting}>
-              {submitting ? 'Signing in…' : 'Sign in (dev)'}
-            </Button>
-          </form>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-slate-500">Quick login</span>
+            <div className="grid grid-cols-3 gap-2">
+              {QUICK_LOGINS.map((q) => (
+                <Button
+                  key={q.role}
+                  type="button"
+                  variant="secondary"
+                  disabled={submitting !== null}
+                  onClick={() => void signIn(q.email, `Demo ${q.label}`, q.role, q.role)}
+                >
+                  {submitting === q.role ? '…' : q.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <details className="text-sm">
+            <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600">
+              Or sign in as a specific user
+            </summary>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void signIn(email, name || 'Dev User', role, 'form');
+              }}
+              className="mt-3 flex flex-col gap-3"
+            >
+              <Input
+                label="Email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.edu"
+              />
+              <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Dev User" />
+              <Select label="Role" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                <option value="STUDENT">Student</option>
+                <option value="STAFF">Staff</option>
+                <option value="ADMIN">Admin</option>
+              </Select>
+              <Button type="submit" variant="secondary" disabled={submitting !== null}>
+                {submitting === 'form' ? 'Signing in…' : 'Sign in (dev)'}
+              </Button>
+            </form>
+          </details>
+
+          <ErrorBanner error={error} />
         </>
       )}
     </div>
