@@ -45,6 +45,10 @@ services:
       # pass-through proxy in a supported location. Blank -> SDK default host
       # (fine anywhere not on Google's blocklist).
       GEMINI_BASE_URL: ${GEMINI_BASE_URL:-}
+      # TESTING ONLY — keeps POST /auth/dev-login reachable in production for
+      # the frontend's per-role quick-login. Unset it (or "false") before the
+      # graded submission / demo recording.
+      ALLOW_DEV_LOGIN: ${ALLOW_DEV_LOGIN:-}
     ports:
       # Bound to loopback only — Nginx on the host proxies to it. Never exposed
       # publicly; the Azure NSG and UFW keep 4000 closed from outside.

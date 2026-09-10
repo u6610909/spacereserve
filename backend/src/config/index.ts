@@ -75,6 +75,16 @@ const envSchema = z.object({
    * to nowhere (see auth.controller.ts).
    */
   FRONTEND_URL: z.string().optional(),
+  /**
+   * TESTING ONLY. `POST /auth/dev-login` is 404 in production by design. Set
+   * this to "true" to keep it reachable during a testing window (e.g. the
+   * frontend's per-role quick-login buttons). Leave unset / "false" for the
+   * graded submission and the demo recording.
+   */
+  ALLOW_DEV_LOGIN: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -104,6 +114,8 @@ export const config = {
   finderAiBaseUrl: env.FINDERAI_BASE_URL ?? '',
   geminiBaseUrl: env.GEMINI_BASE_URL ?? '',
   frontendUrl: env.FRONTEND_URL ?? '',
+  /** TESTING ONLY — see ALLOW_DEV_LOGIN above. */
+  allowDevLogin: env.ALLOW_DEV_LOGIN ?? false,
   /** Every route lives under this prefix so Nginx can proxy it cleanly. */
   basePath: '/spacereserve/api/v1',
 } as const;

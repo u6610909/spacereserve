@@ -88,10 +88,14 @@ export const callback: RequestHandler = async (req, res, next) => {
   }
 };
 
-/** Hard-disabled in production (docs/architecture.md) — 404s rather than 403 so its existence isn't revealed. */
+/**
+ * Disabled in production by default — 404s rather than 403 so its existence
+ * isn't revealed. `ALLOW_DEV_LOGIN=true` re-opens it for a testing window
+ * (the frontend's per-role quick-login); turn that off before grading.
+ */
 export const devLoginController: RequestHandler = async (req, res, next) => {
   try {
-    if (config.isProduction) {
+    if (config.isProduction && !config.allowDevLogin) {
       next(new NotFoundError());
       return;
     }
