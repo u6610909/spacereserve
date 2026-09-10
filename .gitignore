@@ -12,3 +12,6 @@ uploads/
 .DS_Store
 .vscode/
 .idea/
+
+# Editor / tooling local config
+.claude/

@@ -1,6 +1,6 @@
 # Multi-stage: build with dev deps, ship a lean runtime image.
 # Images are ALWAYS built in CI and pulled on the VPS — the VM is memory-starved
-# and must never run `docker build` (CLAUDE.md hard rule 9).
+# and must never run `docker build` (project rule).
 
 FROM node:20-alpine AS deps
 WORKDIR /app

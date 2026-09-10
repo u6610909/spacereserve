@@ -1,6 +1,6 @@
-// SpaceReserve data model — MASTER_PROMPT.md §4, copied verbatim (CLAUDE.md).
-// ApiKey is the one addition beyond §4 — CLAUDE.md documents it as "added in
-// phase 9" for the peer API; included in this first migration since nothing
+// SpaceReserve data model. ApiKey is the one model added for the peer API
+// (phase 9) — it stores a SHA-256 hash of each issued key, never the key
+// itself; included in this first migration since nothing
 // is deployed yet, so there's no expand/contract migration to avoid.
 
 generator client {

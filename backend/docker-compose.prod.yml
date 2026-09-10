@@ -1,8 +1,8 @@
 # Production (Azure VM). NO build section — the VM is memory-starved and must
-# never build images (CLAUDE.md hard rule 9). CI builds and pushes to GHCR;
+# never build images (project rule). CI builds and pushes to GHCR;
 # deploy.sh only pulls and restarts.
 #
-# Single service, no postgres (DECISIONS.md "THE BIG CHANGE"): the VM is a
+# Single service, no postgres (docs/architecture.md): the VM is a
 # Standard B2ats v2 (1 GiB RAM) already running MySQL + WordPress + nginx +
 # the lab API — a Postgres container did not fit. Production points at Azure
 # Database for PostgreSQL Flexible Server instead; SpaceReserve-DatabaseUrl

@@ -7,7 +7,7 @@ import { logger } from '../lib/logger';
 
 /**
  * Terminal error middleware. Production responses never contain stack traces
- * or internal messages (MASTER_PROMPT §8 hardening).
+ * or internal messages.
  */
 export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   const requestId = res.getHeader('x-request-id');

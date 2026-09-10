@@ -1,6 +1,6 @@
 /**
  * Runs `prisma migrate deploy` in production, where the database URL lives in
- * Key Vault — not in an env var or a file on the VM (CLAUDE.md hard rule 1).
+ * Key Vault — not in an env var or a file on the VM (project rule).
  *
  * `deploy.sh` invokes this in a one-off container instead of calling the
  * Prisma CLI directly: the Prisma CLI only reads `env("DATABASE_URL")` and
@@ -10,7 +10,7 @@
  * If `DATABASE_URL` is already set (local dev, CI against a throwaway
  * Postgres), we skip the vault entirely and just run the migration. Lives in
  * `src/config/` because that is the only directory allowed to read
- * `process.env` (MASTER_PROMPT §9.3 / the env-guard script).
+ * `process.env` (the "process.env only in src/config" rule / the env-guard script).
  */
 import { spawnSync } from 'node:child_process';
 

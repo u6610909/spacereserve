@@ -30,7 +30,7 @@ export type GeminiInterpretation = z.infer<typeof geminiResultSchema>;
 
 /**
  * `null` on any failure (missing key, network error, malformed/invalid JSON)
- * — callers fall back to keyword search (MASTER_PROMPT §6a). Model output is
+ * — callers fall back to keyword search (docs/architecture.md). Model output is
  * zod-validated before anything downstream touches it; it never reaches
  * Prisma except as typed query-builder arguments.
  */
@@ -58,7 +58,7 @@ export async function interpretQuery(query: string): Promise<GeminiInterpretatio
 
     // Relative dates ("tomorrow", "next Monday") are resolved against this —
     // the one place in the codebase that thinks about timezones at all
-    // (DECISIONS.md #8). Everything else stays UTC/timestamptz.
+    // (docs/architecture.md). Everything else stays UTC/timestamptz.
     const nowBangkok = DateTime.now().setZone('Asia/Bangkok').toISO();
     const prompt = [
       `Current date/time in Asia/Bangkok: ${nowBangkok}.`,

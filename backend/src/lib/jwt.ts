@@ -19,7 +19,7 @@ export interface AccessTokenPayload extends AccessTokenClaims {
   iss: string;
 }
 
-/** HS256, 1h, claims `sub,email,role,iat,exp,iss` (MASTER_PROMPT §8). */
+/** HS256, 1h, claims `sub,email,role,iat,exp,iss` (docs/architecture.md). */
 export function signAccessToken(claims: AccessTokenClaims): string {
   return jwt.sign(claims, requireJwtSecret(), {
     algorithm: 'HS256',

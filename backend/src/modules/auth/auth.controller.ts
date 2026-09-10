@@ -12,7 +12,7 @@ const SESSION_COOKIE_MAX_AGE_MS = 60 * 60 * 1000; // matches the 1h JWT
 
 // `secure: true` cookies are dropped by browsers over plain HTTP, so this
 // only flips on in production where the app sits behind HTTPS (Nginx + the
-// existing cert — CLAUDE.md's SSL section).
+// existing cert — docs/architecture.md).
 const baseCookieOptions: CookieOptions = {
   httpOnly: true,
   secure: config.isProduction,
@@ -74,7 +74,7 @@ export const callback: RequestHandler = async (req, res, next) => {
 
     // The frontend's origin isn't configured (still blocked, or a non-frontend
     // caller like Postman) — degrade to the old JSON response instead of
-    // redirecting to nowhere. No token in the URL either way (CLAUDE.md —
+    // redirecting to nowhere. No token in the URL either way (docs/architecture.md —
     // "no tokens in URLs or history"): the frontend reads the session cookie
     // via GET /auth/me after landing, same as this JSON branch just tells the
     // caller to do manually.
@@ -88,7 +88,7 @@ export const callback: RequestHandler = async (req, res, next) => {
   }
 };
 
-/** Hard-disabled in production (MASTER_PROMPT §5) — 404s rather than 403 so its existence isn't revealed. */
+/** Hard-disabled in production (docs/architecture.md) — 404s rather than 403 so its existence isn't revealed. */
 export const devLoginController: RequestHandler = async (req, res, next) => {
   try {
     if (config.isProduction) {

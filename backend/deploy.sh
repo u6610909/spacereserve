@@ -4,7 +4,7 @@
 # NEVER builds an image here — the VM is memory-starved (already OOM-killed
 # once; needed a swapfile just to run `npm install`) and runs nginx + MySQL +
 # WordPress + the pm2 lab API alongside this. CI builds and pushes to GHCR
-# (CLAUDE.md hard rule 9); this script only pulls, migrates, and restarts.
+# (project rule); this script only pulls, migrates, and restarts.
 #
 # First-time setup: see DEPLOY.md. In short — run scripts/vm-prereqs.sh once,
 # then `cp .env.prod.example .env` and fill in the four Azure values.
@@ -52,15 +52,15 @@ previous_image=$(docker compose -f "$COMPOSE_FILE" images -q api 2>/dev/null || 
 log "pulling ${IMAGE:-ghcr.io/u6610909/spacereserve:latest}"
 docker compose -f "$COMPOSE_FILE" pull api
 
-# One-off container, not a host toolchain (DECISIONS.md #6). Never
-# `prisma migrate dev` here — it can reset the database; migrations are
-# generated locally and committed (CLAUDE.md hard rule 3). The image ships
-# the prisma CLI + prisma/ dir specifically so this works offline-of-npm.
+# One-off container, not a host toolchain. Never `prisma migrate dev` here —
+# it can reset the database; migrations are generated locally and committed
+# (additive-only). The image ships the prisma CLI + prisma/ dir specifically
+# so this works offline-of-npm.
 #
 # `migrateDeploy.js` fetches SpaceReserve-DatabaseUrl from Key Vault first —
-# the DB URL is never in an env var or a file on the VM (CLAUDE.md hard
-# rule 1). The one-off container inherits the AZURE_* creds from the compose
-# `environment:` block, which is all DefaultAzureCredential needs.
+# the DB URL is never in an env var or a file on the VM. The one-off
+# container inherits the AZURE_* creds from the compose `environment:` block,
+# which is all DefaultAzureCredential needs.
 log "applying database migrations"
 docker compose -f "$COMPOSE_FILE" run --rm api node dist/config/migrateDeploy.js
 
@@ -80,7 +80,7 @@ done
 if [ "$healthy" = true ]; then
   log "healthy — deploy complete"
   curl -s "$HEALTH_URL"; echo
-  log "reminder: also curl /content and /api to confirm nothing else broke (CLAUDE.md hard rule 4)"
+  log "reminder: also curl /content and /api to confirm nothing else broke (project rule)"
   exit 0
 fi
 

@@ -3,7 +3,7 @@ import sgMail from '@sendgrid/mail';
 import { getSecrets } from '../config';
 import { logger } from '../lib/logger';
 
-// No verified sender exists yet (CLAUDE.md "Still blocked": "SendGrid key +
+// No verified sender exists yet (docs/architecture.md: "SendGrid key +
 // verified sender + dynamic template IDs"). Plain text/subject is built in
 // code instead of a SendGrid dynamic template, so no template id is needed
 // either. This address is inert until SENDGRID_API_KEY is actually set —
@@ -29,7 +29,7 @@ interface EmailParams {
 }
 
 /**
- * Never throws (MASTER_PROMPT §7): a booking action must succeed whether or
+ * Never throws (docs/architecture.md): a booking action must succeed whether or
  * not the email goes out. Callers fire this without awaiting the result on
  * the request path — see reservations.service.ts.
  */

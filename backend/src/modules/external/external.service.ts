@@ -14,7 +14,7 @@ export interface ActiveBookingResponse {
 
 /**
  * FinderAI calls this to learn who had a room booked at a given instant
- * (MASTER_PROMPT §7 — "they call us"). Returns the minimum personal data
+ * (docs/architecture.md — "they call us"). Returns the minimum personal data
  * needed, and `{ reservation: null }` both when nobody had it and when the
  * room name doesn't match one of ours — not distinguishing the two avoids
  * leaking whether a room name exists to an unauthenticated-beyond-the-key

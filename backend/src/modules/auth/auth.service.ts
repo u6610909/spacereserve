@@ -20,7 +20,7 @@ export interface Pkce {
   codeChallenge: string;
 }
 
-/** Fresh state + PKCE pair for one login attempt (MASTER_PROMPT §8 / CLAUDE.md). */
+/** Fresh state + PKCE pair for one login attempt (see docs/architecture.md). */
 export function generatePkce(): Pkce {
   const state = base64url(randomBytes(16));
   const codeVerifier = base64url(randomBytes(32));
@@ -31,7 +31,7 @@ export function generatePkce(): Pkce {
 let msalClient: ConfidentialClientApplication | undefined;
 
 /**
- * `undefined` when AD isn't configured yet (still blocked — see CLAUDE.md
+ * `undefined` when AD isn't configured yet (still blocked — see docs/architecture.md
  * "Still blocked": personal Entra tenant + app registration). Callers turn
  * that into a clear 503 rather than a confusing MSAL error.
  */
@@ -55,7 +55,7 @@ export async function buildAuthCodeUrl(pkce: Pkce): Promise<string> {
   const client = getMsalClient();
   if (!client) {
     throw new ServiceUnavailableError(
-      'Microsoft sign-in is not configured yet (no AD tenant/client id). See CLAUDE.md "Still blocked".',
+      'Microsoft sign-in is not configured yet (no AD tenant/client id). See docs/architecture.md.',
     );
   }
   if (!config.adRedirectUri) {

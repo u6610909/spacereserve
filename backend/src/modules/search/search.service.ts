@@ -51,7 +51,7 @@ export interface NaturalSearchResult {
   degraded: boolean;
 }
 
-/** Never throws for an AI failure (MASTER_PROMPT §6a) — degrades to keyword search instead. */
+/** Never throws for an AI failure (docs/architecture.md) — degrades to keyword search instead. */
 export async function naturalSearch(query: string): Promise<NaturalSearchResult> {
   const interpretation = await withTimeout(interpretQuery(query), GEMINI_TIMEOUT_MS);
 

@@ -10,7 +10,7 @@ interface AuditEntry {
   metadata?: Prisma.InputJsonValue;
 }
 
-/** Every STAFF/ADMIN mutation writes one of these (MASTER_PROMPT §4 business rule 6). */
+/** Every STAFF/ADMIN mutation writes one of these (business rule: staff/admin actions are audited). */
 export async function writeAuditLog(entry: AuditEntry): Promise<void> {
   await getPrisma().auditLog.create({
     data: {
