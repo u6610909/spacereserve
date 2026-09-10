@@ -56,8 +56,13 @@ docker compose -f "$COMPOSE_FILE" pull api
 # `prisma migrate dev` here — it can reset the database; migrations are
 # generated locally and committed (CLAUDE.md hard rule 3). The image ships
 # the prisma CLI + prisma/ dir specifically so this works offline-of-npm.
+#
+# `migrateDeploy.js` fetches SpaceReserve-DatabaseUrl from Key Vault first —
+# the DB URL is never in an env var or a file on the VM (CLAUDE.md hard
+# rule 1). The one-off container inherits the AZURE_* creds from the compose
+# `environment:` block, which is all DefaultAzureCredential needs.
 log "applying database migrations"
-docker compose -f "$COMPOSE_FILE" run --rm api npx prisma migrate deploy
+docker compose -f "$COMPOSE_FILE" run --rm api node dist/config/migrateDeploy.js
 
 log "starting api"
 docker compose -f "$COMPOSE_FILE" up -d api
