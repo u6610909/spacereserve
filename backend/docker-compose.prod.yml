@@ -29,6 +29,17 @@ services:
       # every time the vault moves. keyvault.ts falls back to a build-time
       # constant if this is unset.
       AZURE_KEY_VAULT_URL: ${AZURE_KEY_VAULT_URL}
+      # OIDC login config — NOT secrets (tenant id and the callback URL are
+      # both public). The AD *client id/secret* still come from Key Vault
+      # (SpaceReserve-AdClientId / -AdClientSecret). Leave these blank and the
+      # app simply has no login provider wired (dev-login is prod-disabled, so
+      # only /health and the peer API stay reachable).
+      AD_TENANT_ID: ${AD_TENANT_ID:-}
+      AD_REDIRECT_URI: ${AD_REDIRECT_URI:-}
+      # Where /auth/callback sends the browser after setting the session
+      # cookie. Blank -> callback returns the token as JSON instead (fine for
+      # an API-only / Postman demo).
+      FRONTEND_URL: ${FRONTEND_URL:-}
     ports:
       # Bound to loopback only — Nginx on the host proxies to it. Never exposed
       # publicly; the Azure NSG and UFW keep 4000 closed from outside.
