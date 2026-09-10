@@ -28,13 +28,24 @@ const geminiResultSchema = z.object({
 
 export type GeminiInterpretation = z.infer<typeof geminiResultSchema>;
 
+/** The real values the DB filter can match, so the model maps "music room" to
+ * the amenities that exist (piano/keyboard/drums) rather than inventing
+ * "music" and returning nothing. */
+export interface SearchVocabulary {
+  amenities: string[];
+  buildings: string[];
+}
+
 /**
  * `null` on any failure (missing key, network error, malformed/invalid JSON)
  * — callers fall back to keyword search (docs/architecture.md). Model output is
  * zod-validated before anything downstream touches it; it never reaches
  * Prisma except as typed query-builder arguments.
  */
-export async function interpretQuery(query: string): Promise<GeminiInterpretation | null> {
+export async function interpretQuery(
+  query: string,
+  vocab?: SearchVocabulary,
+): Promise<GeminiInterpretation | null> {
   const { geminiApiKey } = getSecrets();
   if (!geminiApiKey) return null;
 
@@ -67,6 +78,14 @@ export async function interpretQuery(query: string): Promise<GeminiInterpretatio
       'Resolve any relative dates/times against the current date/time above.',
       'capacity is the number of people mentioned, if any.',
       'startTime/endTime must be ISO 8601 with a +07:00 offset.',
+      vocab && vocab.amenities.length > 0
+        ? `amenities: choose zero or more values EXACTLY from this list, nothing else — [${vocab.amenities.join(
+            ', ',
+          )}]. Map loose wording (e.g. "music"/"band"/"jam" -> piano, keyboard, drums; "TV" -> tv-display). If nothing clearly fits, return null.`
+        : 'amenities: short lowercase keywords, or null.',
+      vocab && vocab.buildings.length > 0
+        ? `building: one EXACT value from [${vocab.buildings.join(', ')}] or null.`
+        : 'building: the building name mentioned, or null.',
       'Omit (null) any field the request does not mention.',
     ].join(' ');
 

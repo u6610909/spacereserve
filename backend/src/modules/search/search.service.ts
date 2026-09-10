@@ -51,9 +51,20 @@ export interface NaturalSearchResult {
   degraded: boolean;
 }
 
+/** The distinct amenity keywords + building names currently in use, handed to
+ * Gemini so it maps a request onto values the DB filter can actually match. */
+async function loadSearchVocabulary(): Promise<{ amenities: string[]; buildings: string[] }> {
+  const rooms = await getPrisma().room.findMany({ select: { amenities: true, building: true } });
+  return {
+    amenities: [...new Set(rooms.flatMap((r) => r.amenities))].sort(),
+    buildings: [...new Set(rooms.map((r) => r.building))].sort(),
+  };
+}
+
 /** Never throws for an AI failure (docs/architecture.md) — degrades to keyword search instead. */
 export async function naturalSearch(query: string): Promise<NaturalSearchResult> {
-  const interpretation = await withTimeout(interpretQuery(query), GEMINI_TIMEOUT_MS);
+  const vocab = await loadSearchVocabulary();
+  const interpretation = await withTimeout(interpretQuery(query, vocab), GEMINI_TIMEOUT_MS);
 
   if (!interpretation) {
     return { rooms: await keywordSearch(query), degraded: true };
