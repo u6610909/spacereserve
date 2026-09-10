@@ -59,6 +59,15 @@ const envSchema = z.object({
   AD_REDIRECT_URI: z.string().optional(),
   FINDERAI_BASE_URL: z.string().optional(),
   /**
+   * Optional override for the Gemini API host. Not a secret. The Azure "East
+   * Asia" (Hong Kong) region is on Google's blocklist for the free
+   * generativelanguage API ("User location is not supported"), so production
+   * points this at a thin pass-through proxy (a Cloudflare Worker) running in
+   * a supported location. Blank -> the SDK's own default host, fine for local
+   * dev. A Gemini failure still degrades to keyword search, never a 500.
+   */
+  GEMINI_BASE_URL: z.string().optional(),
+  /**
    * Where /auth/callback redirects after setting the session cookie, for the
    * React frontend. Same non-secret, blank-by-default pattern as the above —
    * unset in production until the frontend's real origin is known; the
@@ -93,6 +102,7 @@ export const config = {
   adTenantId: env.AD_TENANT_ID ?? '',
   adRedirectUri: env.AD_REDIRECT_URI ?? '',
   finderAiBaseUrl: env.FINDERAI_BASE_URL ?? '',
+  geminiBaseUrl: env.GEMINI_BASE_URL ?? '',
   frontendUrl: env.FRONTEND_URL ?? '',
   /** Every route lives under this prefix so Nginx can proxy it cleanly. */
   basePath: '/spacereserve/api/v1',

@@ -2,7 +2,7 @@ import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 
-import { getSecrets } from '../config';
+import { config, getSecrets } from '../config';
 import { logger } from '../lib/logger';
 
 import type { ObjectSchema } from '@google/generative-ai';
@@ -40,16 +40,21 @@ export async function interpretQuery(query: string): Promise<GeminiInterpretatio
 
   try {
     const client = new GoogleGenerativeAI(geminiApiKey);
-    const model = client.getGenerativeModel({
-      // Pinned model names keep getting retired from the v1beta
-      // generateContent endpoint (1.5-flash -> 404, then 2.0-flash -> 404
-      // "use gemini-3.6-flash"). `gemini-flash-latest` is Google's moving
-      // alias for the current free-tier flash model, which still honours
-      // responseSchema JSON output — failure here just falls back to keyword
-      // search with "degraded": true, never a 500.
-      model: 'gemini-flash-latest',
-      generationConfig: { responseMimeType: 'application/json', responseSchema },
-    });
+    const model = client.getGenerativeModel(
+      {
+        // Pinned model names keep getting retired from the v1beta
+        // generateContent endpoint (1.5-flash -> 404, then 2.0-flash -> 404
+        // "use gemini-3.6-flash"). `gemini-flash-latest` is Google's moving
+        // alias for the current free-tier flash model, which still honours
+        // responseSchema JSON output — failure here just falls back to keyword
+        // search with "degraded": true, never a 500.
+        model: 'gemini-flash-latest',
+        generationConfig: { responseMimeType: 'application/json', responseSchema },
+      },
+      // `baseUrl` routes the call through the region-unblocked proxy in
+      // production (see config.geminiBaseUrl); empty -> the SDK's default host.
+      config.geminiBaseUrl ? { baseUrl: config.geminiBaseUrl } : undefined,
+    );
 
     // Relative dates ("tomorrow", "next Monday") are resolved against this —
     // the one place in the codebase that thinks about timezones at all
