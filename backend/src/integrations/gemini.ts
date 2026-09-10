@@ -41,10 +41,13 @@ export async function interpretQuery(query: string): Promise<GeminiInterpretatio
   try {
     const client = new GoogleGenerativeAI(geminiApiKey);
     const model = client.getGenerativeModel({
-      // gemini-1.5-flash was retired from the v1beta generateContent endpoint
-      // (404 "not found for API version v1beta"); 2.0-flash is the current
-      // free-tier model that still supports responseSchema JSON output.
-      model: 'gemini-2.0-flash',
+      // Pinned model names keep getting retired from the v1beta
+      // generateContent endpoint (1.5-flash -> 404, then 2.0-flash -> 404
+      // "use gemini-3.6-flash"). `gemini-flash-latest` is Google's moving
+      // alias for the current free-tier flash model, which still honours
+      // responseSchema JSON output — failure here just falls back to keyword
+      // search with "degraded": true, never a 500.
+      model: 'gemini-flash-latest',
       generationConfig: { responseMimeType: 'application/json', responseSchema },
     });
 
