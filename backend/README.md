@@ -305,9 +305,15 @@ Partner: **Finder Portal (FinderAI)**, campus Lost & Found. Full contract in
 
 ## Deployment
 
+**Step-by-step runbook: [DEPLOY.md](DEPLOY.md)** — which Azure resources to create, which value
+goes where, first deploy, recurring deploy, rollback, verification.
+
 Target: `azureuser@20.2.140.191` (Azure VM, East Asia), domain
 `ratchanon-bad2026.eastasia.cloudapp.azure.com`, app on port 4000 (3000 is the existing lab API).
 
+- **One-time VM prep**: [`scripts/vm-prereqs.sh`](scripts/vm-prereqs.sh) — grows swap 1→4 GB,
+  installs Docker + the compose plugin, sets UFW to 22/80/443. Doesn't touch nginx, MySQL,
+  WordPress, or the lab API.
 - **Images are never built on the VM** — GitHub Actions builds and pushes to
   `ghcr.io/u6610909/spacereserve` on every push to `main` ([.github/workflows/ci.yml](../.github/workflows/ci.yml)).
 - **Nginx**: paste [nginx/spacereserve.conf](nginx/spacereserve.conf) into the existing SSL
@@ -317,16 +323,20 @@ Target: `azureuser@20.2.140.191` (Azure VM, East Asia), domain
   (Postgres is Azure Database for PostgreSQL Flexible Server in prod, not a container —
   see `DECISIONS.md`), bound to `127.0.0.1:4000` only. A named volume (`room-images`) holds
   uploaded room photos so they survive the container being replaced on every deploy.
-- **Deploy**: [`./deploy.sh`](deploy.sh) — pulls the image, runs `prisma migrate deploy` in a
-  one-off container, restarts, waits for `/health`, and rolls back to the previous image tag on
-  failure. Idempotent, `set -euo pipefail`.
+- **Config on the VM**: [`.env.prod.example`](.env.prod.example) → `.env` holds exactly four
+  values — the three Key Vault service-principal credentials plus the vault URL. Every other
+  secret comes from the vault at boot.
+- **Deploy**: [`./deploy.sh`](deploy.sh) — preflight checks, pulls the image, runs
+  `prisma migrate deploy` in a one-off container (the runtime image ships the Prisma CLI +
+  `prisma/` for exactly this), restarts, waits for `/health`, dumps logs and rolls back to the
+  previous image on failure. Idempotent, `set -euo pipefail`.
 - **VPS hardening**: UFW (22/80/443 only), SSH key-only, fail2ban, unattended upgrades, non-root
   app user, swap configured.
 
-**Live URL:** not yet deployed — blocked on the class Azure Key Vault URL and service principal,
-which the professor has not issued yet (see CLAUDE.md's "Still blocked" list). The application
-boots and refuses to start without it by design; that failure mode is what the demo video shows
-until real credentials land.
+**Live URL:** not yet deployed. The pipeline is ready to run — everything above is in place; it
+just needs the Azure resources created (Key Vault + two app registrations + Azure Database for
+PostgreSQL) and their values plugged into `.env`. Until a real vault exists the app refuses to
+boot by design, which is the failure mode the demo video shows.
 
 ## Contributing
 

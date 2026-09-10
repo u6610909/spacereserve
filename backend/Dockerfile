@@ -12,29 +12,26 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json tsconfig.json tsconfig.build.json ./
 COPY src ./src
-# Docker has no conditional COPY, and `prisma/` does not exist until Phase 2.
-# Listing package.json guarantees at least one match so the wildcard is legal
-# now and picks up prisma/ once it lands; the stray copy is build-stage only.
-COPY package.json prisma* ./prisma-src/
-RUN if [ -f ./prisma-src/schema.prisma ]; then \
-        npx prisma generate --schema ./prisma-src/schema.prisma; \
-    else \
-        echo 'no prisma/schema.prisma yet (Phase 2) — skipping prisma generate'; \
-    fi
+COPY prisma ./prisma
+RUN npx prisma generate
 RUN npm run build
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl openssl
 
 COPY package.json package-lock.json ./
+# `prisma` (the CLI) is a regular dependency, not dev — the runtime image
+# needs it so `deploy.sh` can run `prisma migrate deploy` in a one-off
+# container against the Azure database.
 RUN npm ci --omit=dev && npm cache clean --force
-# The runtime install is fresh, so it does not contain the client generated in
-# the build stage. `.prisma` exists either way (@prisma/client ships a stub), so
-# this COPY is safe before Phase 2 and carries the real client after it.
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+
+COPY prisma ./prisma
 COPY --from=build /app/dist ./dist
+# Generate the client against the runtime's own node_modules (the build
+# stage's is a different install). Needs `prisma/` present, above.
+RUN npx prisma generate
 
 # Room images are written here at runtime (multer, see lib/roomImages.ts) —
 # a volume is mounted over this in both compose files so uploads survive a

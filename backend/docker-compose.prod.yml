@@ -18,12 +18,17 @@ services:
       NODE_ENV: production
       PORT: 4000
       APP_VERSION: ${APP_VERSION:-0.1.0}
-      # The ONLY env config permitted in production: the three Azure bootstrap
-      # variables. Every other secret — including the database URL — is
-      # fetched from Key Vault at boot.
+      # The three service-principal credentials the app uses to authenticate
+      # to Key Vault — the only *secrets* in the environment. Every other
+      # secret, including the database URL, is fetched from the vault at boot.
       AZURE_TENANT_ID: ${AZURE_TENANT_ID}
       AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
       AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET}
+      # The vault's address — not a secret (it's in the portal, discoverable),
+      # so it rides in the env rather than forcing a code change + CI rebuild
+      # every time the vault moves. keyvault.ts falls back to a build-time
+      # constant if this is unset.
+      AZURE_KEY_VAULT_URL: ${AZURE_KEY_VAULT_URL}
     ports:
       # Bound to loopback only — Nginx on the host proxies to it. Never exposed
       # publicly; the Azure NSG and UFW keep 4000 closed from outside.

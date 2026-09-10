@@ -2,17 +2,17 @@ import { DefaultAzureCredential } from '@azure/identity';
 import { SecretClient } from '@azure/keyvault-secrets';
 
 /**
- * Class Key Vault URL — still on CLAUDE.md's "Still blocked" list. Deliberately
- * left empty rather than guessed (MASTER_PROMPT §14: never invent a `<<>>`
- * value). CLAUDE.md hard rule 1 also caps production to exactly three env vars
- * (AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_CLIENT_SECRET), so this can't be a
- * 4th prod env var — it has to be a config constant, same pattern as
- * AD_TENANT_ID. An empty value here correctly makes production refuse to boot
- * (see `loadVaultSecrets` below), which is the required behaviour until the
- * real URL is issued — fill it in as a one-line change, not a code change.
+ * The Key Vault's address. Not a secret (it's visible in the Azure portal),
+ * so production passes it via `AZURE_KEY_VAULT_URL` — same as dev — rather
+ * than baking it into the image and needing a code change + CI rebuild every
+ * time it moves. `BUILD_TIME_DEFAULT` is a fallback for a pinned build; when
+ * both are empty, production refuses to boot with a clear message (see
+ * `loadVaultSecrets`), which is the intended behaviour until a real vault
+ * exists. This file lives under `src/config/`, the only place allowed to
+ * read `process.env`.
  */
-const KEY_VAULT_URL =
-  process.env.AZURE_KEY_VAULT_URL /* dev-only override, see .env.example */ || '';
+const BUILD_TIME_DEFAULT = '';
+const KEY_VAULT_URL = process.env.AZURE_KEY_VAULT_URL || BUILD_TIME_DEFAULT;
 
 /** Vault secret names, prefixed to avoid collisions with other class projects. */
 const SECRET_NAMES = {

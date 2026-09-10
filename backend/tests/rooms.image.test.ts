@@ -65,9 +65,20 @@ describe('POST /rooms/:id/image', () => {
       .set('Authorization', `Bearer ${staffToken}`)
       .attach('image', TINY_PNG, { filename: 'room.png', contentType: 'image/png' });
 
-    const res = await request(app).get(upload.body.room.imageUrl as string);
+    // `.buffer()` + `.parse` — superagent's default text parser chokes on a
+    // binary PNG body under parallel load ("Expected HTTP/"), so take the
+    // bytes raw and just check length/type.
+    const res = await request(app)
+      .get(upload.body.room.imageUrl as string)
+      .buffer(true)
+      .parse((response, cb) => {
+        const chunks: Buffer[] = [];
+        response.on('data', (c: Buffer) => chunks.push(c));
+        response.on('end', () => cb(null, Buffer.concat(chunks)));
+      });
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('image/png');
+    expect((res.body as Buffer).length).toBe(TINY_PNG.length);
   });
 
   it('replaces the old file when uploaded again', async () => {
