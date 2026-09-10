@@ -40,6 +40,11 @@ services:
       # cookie. Blank -> callback returns the token as JSON instead (fine for
       # an API-only / Postman demo).
       FRONTEND_URL: ${FRONTEND_URL:-}
+      # Gemini API host override — not a secret. Azure East Asia (Hong Kong)
+      # is region-blocked for the free Gemini API, so this points at a
+      # pass-through proxy in a supported location. Blank -> SDK default host
+      # (fine anywhere not on Google's blocklist).
+      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-}
     ports:
       # Bound to loopback only — Nginx on the host proxies to it. Never exposed
       # publicly; the Azure NSG and UFW keep 4000 closed from outside.
