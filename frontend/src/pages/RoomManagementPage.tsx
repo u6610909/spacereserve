@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import type { Room, RoomStatus } from '../api/types';
 import { Badge } from '../components/ui/Badge';
@@ -44,7 +44,12 @@ function RoomImageUploader({ room }: { room: Room }) {
         }}
       />
       <div className="flex gap-2">
-        <Button type="button" variant="secondary" disabled={upload.isPending} onClick={() => fileInputRef.current?.click()}>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={upload.isPending}
+          onClick={() => fileInputRef.current?.click()}
+        >
           {upload.isPending ? 'Uploading…' : room.imageUrl ? 'Change photo' : 'Upload photo'}
         </Button>
         {room.imageUrl && (
@@ -70,11 +75,13 @@ const EMPTY_FORM: RoomFormState = { name: '', building: '', capacity: '', amenit
 
 function RoomForm({
   initial,
+  buildings,
   onSubmit,
   submitting,
   error,
 }: {
   initial: RoomFormState;
+  buildings: string[];
   onSubmit: (form: RoomFormState) => void;
   submitting: boolean;
   error: unknown;
@@ -93,9 +100,16 @@ function RoomForm({
       <Input
         label="Building"
         required
+        list="mng-buildings"
         value={form.building}
         onChange={(e) => setForm({ ...form, building: e.target.value })}
+        placeholder="Pick an existing one or type a new name"
       />
+      <datalist id="mng-buildings">
+        {buildings.map((b) => (
+          <option key={b} value={b} />
+        ))}
+      </datalist>
       <Input
         label="Capacity"
         type="number"
@@ -118,6 +132,91 @@ function RoomForm({
   );
 }
 
+function BuildingSection({
+  building,
+  rooms,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+  deleteError,
+}: {
+  building: string;
+  rooms: Room[];
+  onEdit: (id: string) => void;
+  onToggleStatus: (room: Room) => void;
+  onDelete: (room: Room) => void;
+  deleteError: Record<string, unknown>;
+}) {
+  const outOfOrder = rooms.filter((r) => r.status !== 'AVAILABLE').length;
+
+  return (
+    <details open className="group overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-slate-50">
+        <div className="flex items-center gap-2">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-90"
+          >
+            <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="font-semibold text-slate-900">{building}</span>
+        </div>
+        <span className="text-xs text-slate-500">
+          {rooms.length} {rooms.length === 1 ? 'room' : 'rooms'}
+          {outOfOrder > 0 && <span className="text-red-500"> · {outOfOrder} out of order</span>}
+        </span>
+      </summary>
+
+      <div className="overflow-x-auto border-t border-slate-200">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
+            <tr>
+              <th className="px-4 py-2">Photo</th>
+              <th className="px-4 py-2">Name</th>
+              <th className="px-4 py-2">Capacity</th>
+              <th className="px-4 py-2">Status</th>
+              <th className="px-4 py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rooms.map((room) => (
+              <tr key={room.id}>
+                <td className="px-4 py-2">
+                  <RoomImage src={room.imageUrl} alt={room.name} className="w-14" />
+                </td>
+                <td className="px-4 py-2 font-medium text-slate-900">{room.name}</td>
+                <td className="px-4 py-2 text-slate-600">{room.capacity}</td>
+                <td className="px-4 py-2">
+                  <Badge tone={room.status === 'AVAILABLE' ? 'green' : 'red'}>
+                    {room.status === 'AVAILABLE' ? 'Available' : 'Out of order'}
+                  </Badge>
+                </td>
+                <td className="px-4 py-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button type="button" variant="ghost" onClick={() => onEdit(room.id)}>
+                      Edit
+                    </Button>
+                    <Button type="button" variant="secondary" onClick={() => onToggleStatus(room)}>
+                      {room.status === 'AVAILABLE' ? 'Take out of order' : 'Mark available'}
+                    </Button>
+                    <Button type="button" variant="danger" onClick={() => onDelete(room)}>
+                      Delete
+                    </Button>
+                  </div>
+                  <ErrorBanner error={deleteError[room.id]} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  );
+}
+
 export function RoomManagementPage() {
   const { data, isLoading, error } = useRooms({});
   const createRoom = useCreateRoom();
@@ -133,6 +232,23 @@ export function RoomManagementPage() {
   const editing = data?.rooms.find((r) => r.id === editingId) ?? null;
   const [deleteError, setDeleteError] = useState<Record<string, unknown>>({});
 
+  const grouped = useMemo(() => {
+    const map = new Map<string, Room[]>();
+    for (const room of data?.rooms ?? []) {
+      const list = map.get(room.building) ?? [];
+      list.push(room);
+      map.set(room.building, list);
+    }
+    return [...map.entries()]
+      .map(([building, rooms]) => ({
+        building,
+        rooms: rooms.sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+      .sort((a, b) => a.building.localeCompare(b.building));
+  }, [data]);
+
+  const buildingNames = grouped.map((g) => g.building);
+
   function toRoomInput(form: RoomFormState) {
     return {
       name: form.name,
@@ -146,7 +262,10 @@ export function RoomManagementPage() {
   }
 
   function toggleStatus(room: Room) {
-    setStatus.mutate({ id: room.id, status: room.status === 'AVAILABLE' ? 'OUT_OF_ORDER' : ('AVAILABLE' as RoomStatus) });
+    setStatus.mutate({
+      id: room.id,
+      status: room.status === 'AVAILABLE' ? 'OUT_OF_ORDER' : ('AVAILABLE' as RoomStatus),
+    });
   }
 
   async function handleDelete(room: Room) {
@@ -160,10 +279,14 @@ export function RoomManagementPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Manage Rooms</h1>
-          <p className="text-sm text-slate-500">Create rooms, edit details, take rooms out of service.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Manage rooms</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {isLoading
+              ? 'Loading…'
+              : `${data?.rooms.length ?? 0} rooms in ${grouped.length} buildings. Create rooms, edit details, take rooms out of service.`}
+          </p>
         </div>
         <Button type="button" onClick={() => setCreating(true)}>
           + New room
@@ -173,49 +296,23 @@ export function RoomManagementPage() {
       <ErrorBanner error={error} />
       {isLoading ? (
         <Spinner />
+      ) : grouped.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">
+          No rooms yet — add the first one.
+        </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
-              <tr>
-                <th className="px-4 py-2">Photo</th>
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Building</th>
-                <th className="px-4 py-2">Capacity</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {data?.rooms.map((room) => (
-                <tr key={room.id}>
-                  <td className="px-4 py-2">
-                    <RoomImage src={room.imageUrl} alt={room.name} className="w-14" />
-                  </td>
-                  <td className="px-4 py-2 font-medium text-slate-900">{room.name}</td>
-                  <td className="px-4 py-2 text-slate-600">{room.building}</td>
-                  <td className="px-4 py-2 text-slate-600">{room.capacity}</td>
-                  <td className="px-4 py-2">
-                    <Badge tone={room.status === 'AVAILABLE' ? 'green' : 'red'}>{room.status}</Badge>
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      <Button type="button" variant="ghost" onClick={() => setEditingId(room.id)}>
-                        Edit
-                      </Button>
-                      <Button type="button" variant="secondary" onClick={() => toggleStatus(room)}>
-                        {room.status === 'AVAILABLE' ? 'Take out of order' : 'Mark available'}
-                      </Button>
-                      <Button type="button" variant="danger" onClick={() => void handleDelete(room)}>
-                        Delete
-                      </Button>
-                    </div>
-                    <ErrorBanner error={deleteError[room.id]} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex flex-col gap-3">
+          {grouped.map(({ building, rooms }) => (
+            <BuildingSection
+              key={building}
+              building={building}
+              rooms={rooms}
+              onEdit={setEditingId}
+              onToggleStatus={toggleStatus}
+              onDelete={(room) => void handleDelete(room)}
+              deleteError={deleteError}
+            />
+          ))}
         </div>
       )}
 
@@ -223,6 +320,7 @@ export function RoomManagementPage() {
         <Modal title="New room" onClose={() => setCreating(false)}>
           <RoomForm
             initial={EMPTY_FORM}
+            buildings={buildingNames}
             submitting={createRoom.isPending}
             error={createRoom.error}
             onSubmit={(form) =>
@@ -249,13 +347,11 @@ export function RoomManagementPage() {
                 capacity: String(editing.capacity),
                 amenities: editing.amenities.join(', '),
               }}
+              buildings={buildingNames}
               submitting={updateRoom.isPending}
               error={updateRoom.error}
               onSubmit={(form) =>
-                updateRoom.mutate(
-                  { id: editing.id, input: toRoomInput(form) },
-                  { onSuccess: () => setEditingId(null) },
-                )
+                updateRoom.mutate({ id: editing.id, input: toRoomInput(form) }, { onSuccess: () => setEditingId(null) })
               }
             />
           </div>
