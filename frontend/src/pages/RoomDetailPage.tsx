@@ -11,19 +11,16 @@ import { ErrorBanner } from '../components/ui/ErrorBanner';
 import { Input } from '../components/ui/Input';
 import { RoomImage } from '../components/ui/RoomImage';
 import { Spinner } from '../components/ui/Spinner';
+import { amenityLabel } from '../lib/amenities';
 import { useCreateReservation } from '../hooks/useReservations';
 import { useRoom } from '../hooks/useRooms';
 
-interface Invitee extends UserLookupResult {}
+type Invitee = UserLookupResult;
 
 function PinIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-4 w-4 shrink-0">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z"
-      />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21Z" />
       <circle cx="12" cy="9.5" r="2.25" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -97,7 +94,9 @@ function AttendeeInvite({
                 {u.name} <span className="text-slate-400">({u.email})</span>
               </span>
               <button type="button" onClick={() => onRemove(u.id)} className="text-slate-400 hover:text-red-600">
-                ✕
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+                  <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+                </svg>
               </button>
             </li>
           ))}
@@ -143,34 +142,37 @@ export function RoomDetailPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <Link to="/rooms" className="text-sm text-brand-600 hover:underline">
-        ← Back to rooms
-      </Link>
+      <nav className="text-sm text-slate-500">
+        <Link to="/rooms" className="text-brand-600 hover:underline">
+          Rooms
+        </Link>
+        <span className="mx-1.5 text-slate-300">/</span>
+        <span className="text-slate-600">{room.name}</span>
+      </nav>
 
       <RoomImage src={room.imageUrl} alt={room.name} aspect="aspect-[16/9]" rounded="rounded-xl" />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Details — left, wider column, like a hotel listing's info panel */}
         <div className="flex flex-col gap-5 lg:col-span-2">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold text-slate-900">{room.name}</h1>
-              <Badge tone={isAvailable ? 'green' : 'red'}>{isAvailable ? 'Available' : 'Out of order'}</Badge>
+              {!isAvailable && <Badge tone="red">Out of order</Badge>}
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
               <PinIcon />
-              {room.building} building
+              {room.building}
             </div>
           </div>
 
           <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700">
             <PeopleIcon />
-            Fits up to {room.capacity} {room.capacity === 1 ? 'person' : 'people'}
+            Seats up to {room.capacity} {room.capacity === 1 ? 'person' : 'people'}
           </div>
 
           <p className="text-sm leading-relaxed text-slate-600">
-            A {room.building}-building space that comfortably seats up to {room.capacity}
-            {room.amenities.length > 0 && <> — equipped with {formatAmenityList(room.amenities)}</>}.
+            A room in {room.building}, seating up to {room.capacity}
+            {room.amenities.length > 0 && <> — set up with {formatAmenityList(room.amenities)}</>}.
           </p>
 
           {room.amenities.length > 0 && (
@@ -178,9 +180,9 @@ export function RoomDetailPage() {
               <h2 className="mb-3 text-sm font-semibold text-slate-900">What this room offers</h2>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-3">
                 {room.amenities.map((a) => (
-                  <div key={a} className="flex items-center gap-2 text-sm capitalize text-slate-700">
+                  <div key={a} className="flex items-center gap-2 text-sm text-slate-700">
                     <AmenityIcon amenity={a} className="h-4.5 w-4.5 text-brand-600" />
-                    {a}
+                    {amenityLabel(a)}
                   </div>
                 ))}
               </div>
@@ -188,12 +190,11 @@ export function RoomDetailPage() {
           )}
         </div>
 
-        {/* Booking card — right, sticky, the "reserve" widget */}
         <div className="lg:col-span-1">
-          <div className="sticky top-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="sticky top-20 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-slate-900">Reserve this room</h2>
             {isAvailable ? (
-              <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-3">
-                <h2 className="text-base font-semibold text-slate-900">Reserve this room</h2>
+              <form onSubmit={(e) => void handleSubmit(e)} className="mt-3 flex flex-col gap-3">
                 <div className="flex gap-2">
                   <Input type="date" label="Date" required value={date} onChange={(e) => setDate(e.target.value)} />
                   <Input
@@ -225,12 +226,9 @@ export function RoomDetailPage() {
                 </Button>
               </form>
             ) : (
-              <>
-                <h2 className="text-base font-semibold text-slate-900">Reserve this room</h2>
-                <p className="mt-2 text-sm text-red-600">
-                  This room is currently out of order and can&apos;t be booked.
-                </p>
-              </>
+              <p className="mt-2 text-sm text-red-600">
+                This room is out of order and can&apos;t be booked right now.
+              </p>
             )}
           </div>
         </div>
@@ -240,7 +238,8 @@ export function RoomDetailPage() {
 }
 
 function formatAmenityList(amenities: string[]): string {
-  if (amenities.length === 1) return amenities[0]!;
-  if (amenities.length === 2) return `${amenities[0]} and ${amenities[1]}`;
-  return `${amenities.slice(0, -1).join(', ')}, and ${amenities.at(-1)}`;
+  const labels = amenities.map(amenityLabel).map((l) => l.toLowerCase());
+  if (labels.length === 1) return labels[0]!;
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(', ')}, and ${labels.at(-1)}`;
 }
