@@ -100,14 +100,15 @@ describe('GET /admin/stats/overview', () => {
       usersByRole: Record<string, number>;
       rooms: { available: number; outOfOrder: number };
       reservations: { upcoming: number };
-      apiKeys: { name: string; lastUsedAt: string | null }[];
+      apiKeys: { name: string; createdAt: string; lastUsedAt: string | null }[];
     };
     expect(body.usersByRole.STAFF).toBeGreaterThanOrEqual(1);
     expect(body.usersByRole.ADMIN).toBeGreaterThanOrEqual(1);
     expect(body.rooms.outOfOrder).toBeGreaterThanOrEqual(1);
     expect(body.reservations.upcoming).toBeGreaterThanOrEqual(1);
     const testPeer = body.apiKeys.find((k) => k.name === 'TestPeer');
-    expect(testPeer).toEqual({ name: 'TestPeer', lastUsedAt: null });
+    expect(testPeer?.lastUsedAt).toBeNull();
+    expect(testPeer?.createdAt).toEqual(expect.any(String));
     expect(JSON.stringify(body)).not.toContain('deadbeef');
   });
 });
