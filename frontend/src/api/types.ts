@@ -45,9 +45,12 @@ export interface Reservation {
 }
 
 export interface LostItemNotice {
-  itemId: string;
+  id: string;
+  title: string;
   description: string;
-  reportedAt: string;
+  category: string;
+  location: string;
+  createdAt: string;
 }
 
 export interface CheckInResult {

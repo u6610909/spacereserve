@@ -294,13 +294,14 @@ Partner: **Finder Portal (FinderAI)**, campus Lost & Found. Full contract in
   found item in a room, they call this to learn who had it booked at that time, so they can
   notify the likely owner. Returns the organizer's name/email and attendee count — the minimum
   needed — or `{"reservation": null}`. Rate-limited 60 req/min per key.
-- **We consume** FinderAI's `GET /api/v1/items/by-location`, authenticated with the key *they*
-  issue us (`SpaceReserve-FinderAIApiKey` in Key Vault), from `POST /reservations/:id/check-in`.
-- **Status:** their real endpoint/response contract isn't final yet, so
-  [src/integrations/finderai.ts](src/integrations/finderai.ts) defines the client behind an
-  interface with a local mock — check-in already works end to end and returns
-  `lostItemNotice: null` until the real client is wired in. Target dates:
-  contract frozen 28 Aug, keys exchanged 4 Sep, joint end-to-end test 16 Sep.
+- **We consume** FinderAI's `GET /items/by-location?location=<room name>&since=<ISO datetime>`,
+  authenticated with the key *they* issue us (`SpaceReserve-FinderAIApiKey` in Key Vault), from
+  `POST /reservations/:id/check-in`.
+- **Status:** real client live, contract exchanged 12 Sep — see
+  [docs/peer-api.md](docs/peer-api.md) for the full request/response shape.
+  [src/integrations/finderai.ts](src/integrations/finderai.ts) still falls back to a local mock
+  (always `[]`) if either side's credential is ever unset, so check-in never breaks on their
+  integration going down.
 - **Keys:** each side generates a 32-byte random hex key for the other, stores only its SHA-256
   hash (`ApiKey.keyHash`), and never logs or commits the raw value.
 
