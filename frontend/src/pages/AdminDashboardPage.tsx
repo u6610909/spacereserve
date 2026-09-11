@@ -101,8 +101,12 @@ function CodeRow({ value }: { value: string }) {
 }
 
 /** Our one exposed peer capability — see docs/peer-api.md. Any partner team
- * gets this same URL, paired with a key issued to them below. */
-const OUR_ENDPOINT = `${window.location.origin}/spacereserve/api/v1/external/bookings/active-at?room=<room name>&at=<ISO 8601 datetime>`;
+ * gets this same URL, paired with a key issued to them below. Kept as a
+ * clean, real URL (no bracketed placeholders baked in) so Copy hands them
+ * something they can actually paste; the query params are documented
+ * separately since they're per-request, not part of the endpoint itself. */
+const OUR_ENDPOINT = `${window.location.origin}/spacereserve/api/v1/external/bookings/active-at`;
+const OUR_ENDPOINT_PARAMS = 'Query params: room=<room name>, at=<ISO 8601 datetime>';
 
 function IssueKeyModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
@@ -119,6 +123,7 @@ function IssueKeyModal({ onClose }: { onClose: () => void }) {
           <div>
             <div className="mb-1 text-xs font-medium uppercase text-slate-500">Endpoint</div>
             <CodeRow value={OUR_ENDPOINT} />
+            <p className="mt-1 text-xs text-slate-400">{OUR_ENDPOINT_PARAMS}</p>
           </div>
           <div>
             <div className="mb-1 text-xs font-medium uppercase text-slate-500">
@@ -222,10 +227,8 @@ function PeerApiSection() {
       <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4">
         <div>
           <div className="mb-1 text-sm font-medium text-slate-900">Our endpoint</div>
-          <p className="mb-2 text-xs text-slate-500">
-            Give this to any partner team — pair it with a key issued below. Not FinderAI-specific.
-          </p>
           <CodeRow value={OUR_ENDPOINT} />
+          <p className="mt-1 text-xs text-slate-400">{OUR_ENDPOINT_PARAMS}</p>
         </div>
         <Button type="button" variant="secondary" className="w-fit" onClick={() => setIssuing(true)}>
           + Issue key for a new team
