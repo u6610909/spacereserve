@@ -79,7 +79,7 @@ done
 if [ "$healthy" = true ]; then
   log "healthy — deploy complete"
   curl -s "$HEALTH_URL"; echo
-  log "reminder: also curl /content and /api to confirm nothing else broke (project rule)"
+  log "reminder: curl the SPA root too — https://\$DOMAIN/spacereserve/ (project rule)"
   exit 0
 fi
 
