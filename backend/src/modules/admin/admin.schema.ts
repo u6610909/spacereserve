@@ -12,6 +12,8 @@ export const issuePeerKeySchema = z.object({
 
 export type IssuePeerKeyInput = z.infer<typeof issuePeerKeySchema>;
 
+export const peerKeyIdParamSchema = z.object({ id: z.string().uuid() });
+
 export const createPeerIntegrationSchema = z.object({
   name: z.string().trim().min(1).max(100),
   baseUrl: z.string().trim().url(),
