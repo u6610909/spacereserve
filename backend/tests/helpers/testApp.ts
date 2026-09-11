@@ -20,5 +20,6 @@ export async function resetDb(): Promise<void> {
   await prisma.reservation.deleteMany();
   await prisma.room.deleteMany();
   await prisma.apiKey.deleteMany();
+  await prisma.peerIntegration.deleteMany();
   await prisma.user.deleteMany();
 }

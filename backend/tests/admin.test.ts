@@ -148,3 +148,119 @@ describe('GET /admin/stats/utilization', () => {
     expect(roomStats).toMatchObject({ reservationCount: 1, totalBookedHours: 2 });
   });
 });
+
+describe('POST /admin/peer-keys', () => {
+  it('STUDENT/STAFF cannot issue a key', async () => {
+    const student = await loginAs('peerkey-student@admin.test', 'STUDENT');
+    const res = await request(app)
+      .post(`${config.basePath}/admin/peer-keys`)
+      .set('Authorization', `Bearer ${student}`)
+      .send({ name: 'SomeOtherTeam' });
+    expect(res.status).toBe(403);
+  });
+
+  it('ADMIN can issue a key for any partner name, not just FinderAI, and only its hash is stored', async () => {
+    const admin = await loginAs('peerkey-admin@admin.test', 'ADMIN');
+    const res = await request(app)
+      .post(`${config.basePath}/admin/peer-keys`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ name: 'EduCore' });
+
+    expect(res.status).toBe(201);
+    const body = res.body as { name: string; key: string };
+    expect(body.name).toBe('EduCore');
+    expect(body.key).toMatch(/^[0-9a-f]{64}$/);
+
+    const stored = await getPrisma().apiKey.findUnique({ where: { name: 'EduCore' } });
+    expect(stored).not.toBeNull();
+    expect(stored!.keyHash).not.toBe(body.key);
+    expect(JSON.stringify(res.body)).not.toContain(stored!.keyHash);
+  });
+
+  it('rejects a second key with a name already in use', async () => {
+    const admin = await loginAs('peerkey-admin-2@admin.test', 'ADMIN');
+    await request(app)
+      .post(`${config.basePath}/admin/peer-keys`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ name: 'DupeTeam' });
+
+    const dupe = await request(app)
+      .post(`${config.basePath}/admin/peer-keys`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ name: 'DupeTeam' });
+    expect(dupe.status).toBe(409);
+  });
+});
+
+describe('/admin/peer-integrations', () => {
+  it('STUDENT cannot list, create, or delete', async () => {
+    const student = await loginAs('peerint-student@admin.test', 'STUDENT');
+    expect(
+      (await request(app).get(`${config.basePath}/admin/peer-integrations`).set('Authorization', `Bearer ${student}`))
+        .status,
+    ).toBe(403);
+    expect(
+      (
+        await request(app)
+          .post(`${config.basePath}/admin/peer-integrations`)
+          .set('Authorization', `Bearer ${student}`)
+          .send({ name: 'X', baseUrl: 'https://x.example.com', apiKey: 'k' })
+      ).status,
+    ).toBe(403);
+  });
+
+  it('ADMIN can create, list (key masked), and delete an entry', async () => {
+    const admin = await loginAs('peerint-admin@admin.test', 'ADMIN');
+
+    const created = await request(app)
+      .post(`${config.basePath}/admin/peer-integrations`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({
+        name: 'EduCore',
+        baseUrl: 'https://educore.example.com/api',
+        apiKey: 'edu_secret_abcdef1234',
+        notes: 'Course registration peer',
+      });
+    expect(created.status).toBe(201);
+    const createdBody = created.body as { peerIntegration: { id: string; apiKeyMasked: string } };
+    expect(createdBody.peerIntegration.apiKeyMasked).toBe('••••1234');
+    expect(JSON.stringify(created.body)).not.toContain('edu_secret_abcdef1234');
+
+    const list = await request(app)
+      .get(`${config.basePath}/admin/peer-integrations`)
+      .set('Authorization', `Bearer ${admin}`);
+    expect(list.status).toBe(200);
+    const listBody = list.body as { peerIntegrations: { name: string; apiKeyMasked: string }[] };
+    expect(listBody.peerIntegrations.find((p) => p.name === 'EduCore')?.apiKeyMasked).toBe('••••1234');
+
+    const del = await request(app)
+      .delete(`${config.basePath}/admin/peer-integrations/${createdBody.peerIntegration.id}`)
+      .set('Authorization', `Bearer ${admin}`);
+    expect(del.status).toBe(204);
+
+    const listAfter = await request(app)
+      .get(`${config.basePath}/admin/peer-integrations`)
+      .set('Authorization', `Bearer ${admin}`);
+    expect((listAfter.body as { peerIntegrations: unknown[] }).peerIntegrations).toHaveLength(0);
+  });
+
+  it('rejects a duplicate name and a malformed base URL', async () => {
+    const admin = await loginAs('peerint-admin-2@admin.test', 'ADMIN');
+    await request(app)
+      .post(`${config.basePath}/admin/peer-integrations`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ name: 'DupeIntegration', baseUrl: 'https://dupe.example.com', apiKey: 'k' });
+
+    const dupe = await request(app)
+      .post(`${config.basePath}/admin/peer-integrations`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ name: 'DupeIntegration', baseUrl: 'https://dupe2.example.com', apiKey: 'k2' });
+    expect(dupe.status).toBe(409);
+
+    const badUrl = await request(app)
+      .post(`${config.basePath}/admin/peer-integrations`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ name: 'BadUrlTeam', baseUrl: 'not-a-url', apiKey: 'k' });
+    expect(badUrl.status).toBe(400);
+  });
+});

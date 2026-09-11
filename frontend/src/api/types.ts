@@ -92,3 +92,17 @@ export interface SystemOverview {
   reservations: { upcoming: number };
   apiKeys: { name: string; lastUsedAt: string | null }[];
 }
+
+export interface IssuedPeerKey {
+  name: string;
+  key: string;
+}
+
+export interface PeerIntegration {
+  id: string;
+  name: string;
+  baseUrl: string;
+  apiKeyMasked: string;
+  notes: string | null;
+  createdAt: string;
+}
