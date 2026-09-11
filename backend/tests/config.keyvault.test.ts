@@ -70,7 +70,8 @@ describe('resolveSecrets — production mode', () => {
       adClientId: 'vault-ad-client-id',
       adClientSecret: 'vault-ad-client-secret',
       geminiApiKey: 'vault-gemini-key',
-      sendGridApiKey: 'vault-sendgrid-key',
+      acsConnectionString: 'vault-acs-connection-string',
+      acsSenderAddress: 'vault-acs-sender-address',
       finderAiApiKey: 'vault-finderai-key',
       peerApiKeyHash: 'vault-peer-api-key-hash',
     };

@@ -44,7 +44,8 @@ const envSchema = z.object({
   AD_CLIENT_ID: z.string().optional(),
   AD_CLIENT_SECRET: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
-  SENDGRID_API_KEY: z.string().optional(),
+  ACS_CONNECTION_STRING: z.string().optional(),
+  ACS_SENDER_ADDRESS: z.string().optional(),
   FINDERAI_API_KEY: z.string().optional(),
   PEER_API_KEY_HASH: z.string().optional(),
   /**
@@ -137,13 +138,14 @@ const TEST_SECRETS: VaultSecrets = {
   jwtSecret: 'test-only-jwt-secret',
   // Left blank on purpose: a non-empty fake value here would pass each
   // integration's "is this configured?" check and trigger a real outbound
-  // call (AD discovery, a SendGrid send) with garbage credentials — slow,
+  // call (AD discovery, an ACS Email send) with garbage credentials — slow,
   // flaky, and pointless in a test run. Empty exercises the same "not
   // configured" degraded path dev/prod hit before real credentials exist.
   adClientId: '',
   adClientSecret: '',
   geminiApiKey: '',
-  sendGridApiKey: '',
+  acsConnectionString: '',
+  acsSenderAddress: '',
   finderAiApiKey: '',
   peerApiKeyHash: 'test-only-peer-api-key-hash',
 };
@@ -167,7 +169,8 @@ export async function resolveSecrets(): Promise<VaultSecrets> {
     adClientId: env.AD_CLIENT_ID ?? '',
     adClientSecret: env.AD_CLIENT_SECRET ?? '',
     geminiApiKey: env.GEMINI_API_KEY ?? '',
-    sendGridApiKey: env.SENDGRID_API_KEY ?? '',
+    acsConnectionString: env.ACS_CONNECTION_STRING ?? '',
+    acsSenderAddress: env.ACS_SENDER_ADDRESS ?? '',
     finderAiApiKey: env.FINDERAI_API_KEY ?? '',
     peerApiKeyHash: env.PEER_API_KEY_HASH ?? '',
   };
@@ -193,7 +196,7 @@ export function requireDatabaseUrl(): string {
 }
 
 /**
- * All other secret consumers (Gemini, SendGrid, FinderAI, AD client
+ * All other secret consumers (Gemini, ACS Email, FinderAI, AD client
  * credentials, the peer API key hash) go through this — each of those has its
  * own designed "not configured" fallback (degraded search, logged email
  * failure, a clear 503 on the auth routes), so a hard throw here isn't

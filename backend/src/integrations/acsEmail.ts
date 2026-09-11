@@ -1,25 +1,23 @@
-import sgMail from '@sendgrid/mail';
+import { EmailClient } from '@azure/communication-email';
 
 import { getSecrets } from '../config';
 import { logger } from '../lib/logger';
 
-// No verified sender exists yet (docs/architecture.md: "SendGrid key +
-// verified sender + dynamic template IDs"). Plain text/subject is built in
-// code instead of a SendGrid dynamic template, so no template id is needed
-// either. This address is inert until SENDGRID_API_KEY is actually set —
-// dev/test never reach `sgMail.send`.
-const FROM_ADDRESS = 'noreply@spacereserve.dev';
+// Azure Communication Services Email, not SendGrid (project rule): pay-per-send
+// with no monthly minimum, billed on the same Azure subscription as everything
+// else here. `SpaceReserve-AcsSenderAddress` is the "From" address ACS issues
+// for the resource's Azure Managed Domain (e.g. donotreply@<guid>.azurecomm.net)
+// — set alongside the connection string, since it's resource-specific and not
+// something the app can hardcode.
+let cachedClient: EmailClient | undefined;
 
-let apiKeySet = false;
-
-function ready(): boolean {
-  const { sendGridApiKey } = getSecrets();
-  if (!sendGridApiKey) return false;
-  if (!apiKeySet) {
-    sgMail.setApiKey(sendGridApiKey);
-    apiKeySet = true;
+function getClient(): EmailClient | null {
+  const { acsConnectionString } = getSecrets();
+  if (!acsConnectionString) return null;
+  if (!cachedClient) {
+    cachedClient = new EmailClient(acsConnectionString);
   }
-  return true;
+  return cachedClient;
 }
 
 interface EmailParams {
@@ -34,15 +32,22 @@ interface EmailParams {
  * the request path — see reservations.service.ts.
  */
 async function send(params: EmailParams): Promise<void> {
-  if (!ready()) {
-    logger.info({ to: params.to, subject: params.subject }, 'sendgrid not configured — email skipped');
+  const client = getClient();
+  const { acsSenderAddress } = getSecrets();
+  if (!client || !acsSenderAddress) {
+    logger.info({ to: params.to, subject: params.subject }, 'ACS email not configured — email skipped');
     return;
   }
 
   try {
-    await sgMail.send({ to: params.to, from: FROM_ADDRESS, subject: params.subject, text: params.text });
+    const poller = await client.beginSend({
+      senderAddress: acsSenderAddress,
+      content: { subject: params.subject, plainText: params.text },
+      recipients: { to: [{ address: params.to }] },
+    });
+    await poller.pollUntilDone();
   } catch (err) {
-    logger.warn({ err, to: params.to }, 'sendgrid send failed — booking unaffected');
+    logger.warn({ err, to: params.to }, 'ACS email send failed — booking unaffected');
   }
 }
 

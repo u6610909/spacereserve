@@ -9,16 +9,17 @@ import { buildTestApp, resetDb } from './helpers/testApp';
 import type { Express } from 'express';
 
 // Mocked so notification recipients can be asserted directly, independent of
-// whether SENDGRID_API_KEY is set (TEST_SECRETS leaves it blank on purpose —
-// see config/index.ts — so the real integration always no-ops in tests).
-vi.mock('../src/integrations/sendgrid', () => ({
+// whether ACS_CONNECTION_STRING is set (TEST_SECRETS leaves it blank on
+// purpose — see config/index.ts — so the real integration always no-ops in
+// tests).
+vi.mock('../src/integrations/acsEmail', () => ({
   sendReservationConfirmedEmail: vi.fn(),
   sendReservationCancelledEmail: vi.fn(),
   sendReservationOverriddenEmail: vi.fn(),
   sendReservationInvitedEmail: vi.fn(),
 }));
 
-import * as sendgrid from '../src/integrations/sendgrid';
+import * as acsEmail from '../src/integrations/acsEmail';
 
 let app: Express;
 
@@ -324,7 +325,7 @@ describe('reservation email notifications', () => {
     expect(created.status).toBe(201);
     const id = (created.body as { reservation: { id: string } }).reservation.id;
 
-    const confirmedTo = vi.mocked(sendgrid.sendReservationConfirmedEmail).mock.calls.map((c) => c[0].to);
+    const confirmedTo = vi.mocked(acsEmail.sendReservationConfirmedEmail).mock.calls.map((c) => c[0].to);
     expect(confirmedTo).toEqual(
       expect.arrayContaining(['notify-organizer@res.test', 'notify-guest@res.test']),
     );
@@ -336,7 +337,7 @@ describe('reservation email notifications', () => {
       .post(`${config.basePath}/reservations/${id}/override`)
       .set('Authorization', `Bearer ${admin.token}`);
     expect(overridden.status).toBe(200);
-    const overriddenTo = vi.mocked(sendgrid.sendReservationOverriddenEmail).mock.calls.map((c) => c[0].to);
+    const overriddenTo = vi.mocked(acsEmail.sendReservationOverriddenEmail).mock.calls.map((c) => c[0].to);
     expect(overriddenTo).toEqual(
       expect.arrayContaining(['notify-organizer@res.test', 'notify-guest@res.test']),
     );
@@ -365,7 +366,7 @@ describe('reservation email notifications', () => {
       .set('Authorization', `Bearer ${organizer.token}`);
     expect(cancelled.status).toBe(204);
 
-    const cancelledTo = vi.mocked(sendgrid.sendReservationCancelledEmail).mock.calls.map((c) => c[0].to);
+    const cancelledTo = vi.mocked(acsEmail.sendReservationCancelledEmail).mock.calls.map((c) => c[0].to);
     expect(cancelledTo).toEqual(
       expect.arrayContaining(['notify-cancel-organizer@res.test', 'notify-cancel-guest@res.test']),
     );
@@ -396,10 +397,10 @@ describe('reservation email notifications', () => {
       .send({ userId: newGuest.userId });
     expect(invited.status).toBe(204);
 
-    expect(sendgrid.sendReservationInvitedEmail).toHaveBeenCalledTimes(1);
-    expect(sendgrid.sendReservationInvitedEmail).toHaveBeenCalledWith(
+    expect(acsEmail.sendReservationInvitedEmail).toHaveBeenCalledTimes(1);
+    expect(acsEmail.sendReservationInvitedEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: 'notify-invite-newguest@res.test' }),
     );
-    expect(sendgrid.sendReservationConfirmedEmail).not.toHaveBeenCalled();
+    expect(acsEmail.sendReservationConfirmedEmail).not.toHaveBeenCalled();
   });
 });
