@@ -80,15 +80,17 @@ export interface SystemOverview {
   usersByRole: Record<Role, number>;
   rooms: { available: number; outOfOrder: number };
   reservations: { upcoming: number };
-  apiKeys: { name: string; lastUsedAt: string | null }[];
+  apiKeys: { name: string; createdAt: string; lastUsedAt: string | null }[];
 }
 
 /**
  * A single "is this system alive" snapshot for the dashboard landing view —
  * counts only, nothing here is a raw record dump (that's what audit-logs and
  * the room/reservation list endpoints are for). `apiKeys` never returns
- * `keyHash` — peer API keys are shown only as name + last-used, matching how
- * `requireApiKey` treats the raw value (never logged or exposed) elsewhere.
+ * `keyHash` — peer API keys are shown only as name + issued/last-used dates,
+ * matching how `requireApiKey` treats the raw value (never logged or exposed)
+ * elsewhere. There's no delete route for `ApiKey`, so this list — newest
+ * first — is already the full issuance history, not just the active set.
  */
 export async function getSystemOverview(): Promise<SystemOverview> {
   const prisma = getPrisma();
@@ -98,7 +100,7 @@ export async function getSystemOverview(): Promise<SystemOverview> {
     prisma.reservation.count({
       where: { status: { in: ['CONFIRMED', 'OVERRIDDEN'] }, startTime: { gt: new Date() } },
     }),
-    prisma.apiKey.findMany({ select: { name: true, lastUsedAt: true }, orderBy: { name: 'asc' } }),
+    prisma.apiKey.findMany({ select: { name: true, createdAt: true, lastUsedAt: true }, orderBy: { createdAt: 'desc' } }),
   ]);
 
   const usersByRole = { STUDENT: 0, STAFF: 0, ADMIN: 0 } as Record<Role, number>;
@@ -111,7 +113,11 @@ export async function getSystemOverview(): Promise<SystemOverview> {
     usersByRole,
     rooms: { available: roomsByStatus.AVAILABLE, outOfOrder: roomsByStatus.OUT_OF_ORDER },
     reservations: { upcoming: upcomingReservations },
-    apiKeys: apiKeys.map((k) => ({ name: k.name, lastUsedAt: k.lastUsedAt?.toISOString() ?? null })),
+    apiKeys: apiKeys.map((k) => ({
+      name: k.name,
+      createdAt: k.createdAt.toISOString(),
+      lastUsedAt: k.lastUsedAt?.toISOString() ?? null,
+    })),
   };
 }
 
