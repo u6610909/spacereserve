@@ -28,7 +28,7 @@ afterAll(async () => {
 });
 
 describe('admin RBAC', () => {
-  it('STUDENT and STAFF are rejected from both admin endpoints', async () => {
+  it('STUDENT and STAFF are rejected from all admin endpoints', async () => {
     const student = await loginAs('student@admin.test', 'STUDENT');
     const staff = await loginAs('staff@admin.test', 'STAFF');
 
@@ -40,10 +40,15 @@ describe('admin RBAC', () => {
         .get(`${config.basePath}/admin/stats/utilization`)
         .set('Authorization', `Bearer ${token}`);
       expect(stats.status).toBe(403);
+
+      const overview = await request(app)
+        .get(`${config.basePath}/admin/stats/overview`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(overview.status).toBe(403);
     }
   });
 
-  it('ADMIN can read both endpoints', async () => {
+  it('ADMIN can read all endpoints', async () => {
     const admin = await loginAs('admin@admin.test', 'ADMIN');
 
     const logs = await request(app).get(`${config.basePath}/admin/audit-logs`).set('Authorization', `Bearer ${admin}`);
@@ -55,6 +60,55 @@ describe('admin RBAC', () => {
       .set('Authorization', `Bearer ${admin}`);
     expect(stats.status).toBe(200);
     expect(stats.body).toHaveProperty('totals');
+
+    const overview = await request(app)
+      .get(`${config.basePath}/admin/stats/overview`)
+      .set('Authorization', `Bearer ${admin}`);
+    expect(overview.status).toBe(200);
+    expect(overview.body).toHaveProperty('usersByRole');
+  });
+});
+
+describe('GET /admin/stats/overview', () => {
+  it('counts users by role, room status, upcoming reservations, and never leaks apiKey hashes', async () => {
+    const admin = await loginAs('overview-admin@admin.test', 'ADMIN');
+    await getPrisma().user.create({
+      data: { adObjectId: 'overview-staff', email: 'overview-staff@admin.test', name: 'Overview Staff', role: 'STAFF' },
+    });
+    const room = await getPrisma().room.create({
+      data: { name: 'Overview OOO Room', building: 'B', capacity: 4, status: 'OUT_OF_ORDER' },
+    });
+    const organizer = await getPrisma().user.create({
+      data: { adObjectId: 'overview-organizer', email: 'overview-org@admin.test', name: 'Overview Organizer' },
+    });
+    await getPrisma().reservation.create({
+      data: {
+        roomId: room.id,
+        organizerId: organizer.id,
+        startTime: new Date(Date.now() + 60 * 60 * 1000),
+        endTime: new Date(Date.now() + 2 * 60 * 60 * 1000),
+      },
+    });
+    await getPrisma().apiKey.create({ data: { name: 'TestPeer', keyHash: 'deadbeef' } });
+
+    const res = await request(app)
+      .get(`${config.basePath}/admin/stats/overview`)
+      .set('Authorization', `Bearer ${admin}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as {
+      usersByRole: Record<string, number>;
+      rooms: { available: number; outOfOrder: number };
+      reservations: { upcoming: number };
+      apiKeys: { name: string; lastUsedAt: string | null }[];
+    };
+    expect(body.usersByRole.STAFF).toBeGreaterThanOrEqual(1);
+    expect(body.usersByRole.ADMIN).toBeGreaterThanOrEqual(1);
+    expect(body.rooms.outOfOrder).toBeGreaterThanOrEqual(1);
+    expect(body.reservations.upcoming).toBeGreaterThanOrEqual(1);
+    const testPeer = body.apiKeys.find((k) => k.name === 'TestPeer');
+    expect(testPeer).toEqual({ name: 'TestPeer', lastUsedAt: null });
+    expect(JSON.stringify(body)).not.toContain('deadbeef');
   });
 });
 

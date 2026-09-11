@@ -1,6 +1,7 @@
 import { getPrisma } from '../../lib/prisma';
 
 import type { AuditLog, Room, User } from '@prisma/client';
+import type { Role } from '@prisma/client';
 
 export async function listAuditLogs(limit: number): Promise<(AuditLog & { actor: User | null })[]> {
   return getPrisma().auditLog.findMany({
@@ -61,5 +62,44 @@ export async function getUtilizationStats(): Promise<UtilizationStats> {
       totalReservations: perRoom.reduce((sum, r) => sum + r.reservationCount, 0),
       totalBookedHours: round2(perRoom.reduce((sum, r) => sum + r.totalBookedHours, 0)),
     },
+  };
+}
+
+export interface SystemOverview {
+  usersByRole: Record<Role, number>;
+  rooms: { available: number; outOfOrder: number };
+  reservations: { upcoming: number };
+  apiKeys: { name: string; lastUsedAt: string | null }[];
+}
+
+/**
+ * A single "is this system alive" snapshot for the dashboard landing view —
+ * counts only, nothing here is a raw record dump (that's what audit-logs and
+ * the room/reservation list endpoints are for). `apiKeys` never returns
+ * `keyHash` — peer API keys are shown only as name + last-used, matching how
+ * `requireApiKey` treats the raw value (never logged or exposed) elsewhere.
+ */
+export async function getSystemOverview(): Promise<SystemOverview> {
+  const prisma = getPrisma();
+  const [usersByRoleRaw, roomsByStatusRaw, upcomingReservations, apiKeys] = await Promise.all([
+    prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
+    prisma.room.groupBy({ by: ['status'], _count: { _all: true } }),
+    prisma.reservation.count({
+      where: { status: { in: ['CONFIRMED', 'OVERRIDDEN'] }, startTime: { gt: new Date() } },
+    }),
+    prisma.apiKey.findMany({ select: { name: true, lastUsedAt: true }, orderBy: { name: 'asc' } }),
+  ]);
+
+  const usersByRole = { STUDENT: 0, STAFF: 0, ADMIN: 0 } as Record<Role, number>;
+  for (const row of usersByRoleRaw) usersByRole[row.role] = row._count._all;
+
+  const roomsByStatus = { AVAILABLE: 0, OUT_OF_ORDER: 0 };
+  for (const row of roomsByStatusRaw) roomsByStatus[row.status] = row._count._all;
+
+  return {
+    usersByRole,
+    rooms: { available: roomsByStatus.AVAILABLE, outOfOrder: roomsByStatus.OUT_OF_ORDER },
+    reservations: { upcoming: upcomingReservations },
+    apiKeys: apiKeys.map((k) => ({ name: k.name, lastUsedAt: k.lastUsedAt?.toISOString() ?? null })),
   };
 }

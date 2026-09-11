@@ -15,3 +15,10 @@ export function useUtilization() {
     queryFn: () => adminApi.utilizationStats(),
   });
 }
+
+export function useSystemOverview() {
+  return useQuery({
+    queryKey: ['admin', 'overview'],
+    queryFn: () => adminApi.systemOverview(),
+  });
+}
