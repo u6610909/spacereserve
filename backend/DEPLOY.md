@@ -47,7 +47,8 @@ Add these secrets (Secrets → Generate/Import):
 | `SpaceReserve-AdClientId` | client id of the **login** app registration (step 4) |
 | `SpaceReserve-AdClientSecret` | client secret of the login app registration |
 | `SpaceReserve-GeminiApiKey` | Google AI Studio key — real key in prod; search degrades gracefully without it |
-| `SpaceReserve-SendGridApiKey` | SendGrid key — or a placeholder; email failures are logged, bookings still succeed |
+| `SpaceReserve-AcsConnectionString` | Azure Communication Services (Email) connection string — or a placeholder; email failures are logged, bookings still succeed |
+| `SpaceReserve-AcsSenderAddress` | the ACS resource's Azure Managed Domain "From" address (e.g. `donotreply@<guid>.azurecomm.net`) |
 | `SpaceReserve-FinderAIApiKey` | the key FinderAI issues us — placeholder until their contract lands |
 | `SpaceReserve-PeerApiKeyHash` | SHA-256 hash of the key we issue FinderAI — `seed.ts` reads this on a fresh DB |
 

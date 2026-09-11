@@ -32,7 +32,7 @@ flowchart LR
     API -->|boot: fetch secrets| KeyVault[Azure Key Vault]
     API -->|OIDC login/callback| AD[Microsoft Entra ID]
     API -->|"POST /search/natural"| Gemini[Google Gemini]
-    API -->|confirm/cancel/override emails| SendGrid
+    API -->|confirm/cancel/override emails| ACS[Azure Communication Services]
     API -->|"check-in: lookup lost items"| FinderAI[FinderAI peer API]
     FinderAI -->|"x-api-key: active-at lookup"| API
 ```
@@ -53,7 +53,7 @@ fallback). Nothing else runs on this VM.
 | Secrets | Azure Key Vault (`@azure/identity` + `@azure/keyvault-secrets`) — no `.env` in production |
 | Validation | Zod on every body/query/param |
 | AI | Google Gemini (`@google/generative-ai`) — natural-language room search, JSON-schema constrained |
-| Email | SendGrid (`@sendgrid/mail`) — booking confirm/cancel/override |
+| Email | Azure Communication Services (`@azure/communication-email`) — booking confirm/cancel/override |
 | Peer integration | FinderAI (campus Lost & Found) — `x-api-key`, both directions |
 | Logging | pino (structured, secrets redacted) |
 | Hardening | helmet, cors, express-rate-limit, cookie-parser (signed cookies) |
@@ -211,7 +211,8 @@ Secret **names only** — values live in the vault:
 | `SpaceReserve-AdClientId` | Entra app registration client id |
 | `SpaceReserve-AdClientSecret` | Entra app registration client secret |
 | `SpaceReserve-GeminiApiKey` | Google Gemini |
-| `SpaceReserve-SendGridApiKey` | SendGrid |
+| `SpaceReserve-AcsConnectionString` | Azure Communication Services (Email) connection string |
+| `SpaceReserve-AcsSenderAddress` | ACS Azure Managed Domain "From" address |
 | `SpaceReserve-FinderAIApiKey` | Key issued to us by the FinderAI team |
 | `SpaceReserve-PeerApiKeyHash` | Bootstrap hash of the key we issue FinderAI |
 
@@ -222,7 +223,7 @@ the demo uses whichever tenant id is set in `AD_TENANT_ID`.
 
 `.env.example` mirrors this table with empty values for local development. Every integration
 degrades gracefully rather than 500ing when its secret is unset: `/auth/login` returns a clear
-503, Gemini search falls back to keyword search (`degraded: true`), SendGrid failures are logged
+503, Gemini search falls back to keyword search (`degraded: true`), ACS email failures are logged
 without failing the booking, and FinderAI lookups return `lostItemNotice: null`.
 
 ## API reference

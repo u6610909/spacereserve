@@ -21,7 +21,8 @@ const SECRET_NAMES = {
   adClientId: 'SpaceReserve-AdClientId',
   adClientSecret: 'SpaceReserve-AdClientSecret',
   geminiApiKey: 'SpaceReserve-GeminiApiKey',
-  sendGridApiKey: 'SpaceReserve-SendGridApiKey',
+  acsConnectionString: 'SpaceReserve-AcsConnectionString',
+  acsSenderAddress: 'SpaceReserve-AcsSenderAddress',
   finderAiApiKey: 'SpaceReserve-FinderAIApiKey',
   peerApiKeyHash: 'SpaceReserve-PeerApiKeyHash',
 } as const;
@@ -32,7 +33,8 @@ export interface VaultSecrets {
   adClientId: string;
   adClientSecret: string;
   geminiApiKey: string;
-  sendGridApiKey: string;
+  acsConnectionString: string;
+  acsSenderAddress: string;
   finderAiApiKey: string;
   peerApiKeyHash: string;
 }

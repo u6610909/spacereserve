@@ -9,7 +9,7 @@ import {
   sendReservationConfirmedEmail,
   sendReservationInvitedEmail,
   sendReservationOverriddenEmail,
-} from '../../integrations/sendgrid';
+} from '../../integrations/acsEmail';
 
 import type { CreateReservationInput } from './reservations.schema';
 

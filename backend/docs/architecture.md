@@ -26,7 +26,7 @@ surface live in [`../README.md`](../README.md); this file is the "why".
 6. **Only services touch Prisma.** Controllers stay thin, business rules live
    in services, Zod validates every body / query / param.
 7. **External failures never break core flows.** Gemini fails → keyword
-   fallback with `"degraded": true`, never a 500. SendGrid fails → logged, the
+   fallback with `"degraded": true`, never a 500. ACS Email fails → logged, the
    booking still succeeds. FinderAI down → check-in still succeeds with
    `lostItemNotice: null`.
 8. **Nginx only adds a `location /spacereserve/` block.** Nothing else on the
