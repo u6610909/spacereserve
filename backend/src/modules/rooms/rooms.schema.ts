@@ -4,6 +4,7 @@ import { z } from 'zod';
 export const roomIdParamSchema = z.object({ id: z.string().uuid() });
 
 export const createRoomSchema = z.object({
+  code: z.string().min(1).optional(),
   name: z.string().min(1),
   building: z.string().min(1),
   capacity: z.number().int().positive(),
