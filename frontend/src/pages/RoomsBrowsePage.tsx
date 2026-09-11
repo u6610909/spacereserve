@@ -147,15 +147,17 @@ export function RoomsBrowsePage() {
     [serverRooms],
   );
 
+  // Filters always apply — a search narrows by meaning first, then
+  // capacity/building/amenities narrow further within those results. Nothing
+  // here is ever hidden depending on `searching`.
   const rooms = useMemo(() => {
-    if (searching) return allRooms; // natural search already scoped the list
     return allRooms.filter((r) => {
       if (capacity && r.capacity < Number(capacity)) return false;
       if (building && r.building !== building) return false;
       if (activeAmenities.length > 0 && !activeAmenities.every((a) => r.amenities.includes(a))) return false;
       return true;
     });
-  }, [allRooms, searching, capacity, building, activeAmenities]);
+  }, [allRooms, capacity, building, activeAmenities]);
 
   const hasFilters = Boolean(capacity || building || activeAmenities.length > 0);
 
@@ -220,37 +222,33 @@ export function RoomsBrowsePage() {
         <ErrorBanner error={search.error} />
         <ErrorBanner error={error} />
 
+        {/* Search narrows by meaning; these narrow further within that —
+            always visible and always active, search or not. */}
         <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
-          {!searching && (
-            <>
-              <Input
-                label="Min. seats"
-                placeholder="Any"
-                type="number"
-                min={1}
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
-                className="w-28"
-              />
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-medium text-slate-700">Building</span>
-                <select
-                  value={building}
-                  onChange={(e) => setBuilding(e.target.value)}
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-brand-500"
-                >
-                  <option value="">All buildings</option>
-                  {buildings.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </>
-          )}
-          {/* Always visible, even mid-search — it drives each card's
-              busy-hours overview regardless of how the list was filtered. */}
+          <Input
+            label="Min. seats"
+            placeholder="Any"
+            type="number"
+            min={1}
+            value={capacity}
+            onChange={(e) => setCapacity(e.target.value)}
+            className="w-28"
+          />
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-slate-700">Building</span>
+            <select
+              value={building}
+              onChange={(e) => setBuilding(e.target.value)}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-brand-500"
+            >
+              <option value="">All buildings</option>
+              {buildings.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-medium text-slate-700">Availability overview for</span>
             <input
@@ -262,14 +260,14 @@ export function RoomsBrowsePage() {
               className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
           </label>
-          {!searching && hasFilters && (
+          {hasFilters && (
             <button type="button" onClick={clearFilters} className="pb-2 text-sm text-brand-600 hover:underline">
               Clear filters
             </button>
           )}
         </div>
 
-        {!searching && amenityOptions.length > 0 && (
+        {amenityOptions.length > 0 && (
           <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
             {amenityOptions.map((a) => {
               const on = activeAmenities.includes(a);
@@ -296,7 +294,13 @@ export function RoomsBrowsePage() {
       {!isLoading && (
         <div className="text-sm text-slate-500">
           {rooms.length} {rooms.length === 1 ? 'room' : 'rooms'}
-          {searching ? ' matched your search' : hasFilters ? ' match your filters' : ''}
+          {searching && hasFilters
+            ? ' matched your search and filters'
+            : searching
+              ? ' matched your search'
+              : hasFilters
+                ? ' match your filters'
+                : ''}
         </div>
       )}
 
@@ -310,9 +314,13 @@ export function RoomsBrowsePage() {
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
           <p className="text-sm font-medium text-slate-700">No rooms match</p>
           <p className="mt-1 text-sm text-slate-500">
-            {searching ? 'Try describing it differently.' : 'Loosen the filters and try again.'}
+            {searching && hasFilters
+              ? 'Try describing it differently, or loosen the filters.'
+              : searching
+                ? 'Try describing it differently.'
+                : 'Loosen the filters and try again.'}
           </p>
-          {hasFilters && !searching && (
+          {hasFilters && (
             <Button type="button" variant="secondary" className="mt-4" onClick={clearFilters}>
               Clear filters
             </Button>
