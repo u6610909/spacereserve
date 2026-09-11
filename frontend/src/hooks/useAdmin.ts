@@ -32,6 +32,14 @@ export function useIssuePeerKey() {
   });
 }
 
+export function useDeletePeerKey() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => adminApi.deletePeerKey(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'overview'] }),
+  });
+}
+
 export function usePeerIntegrations() {
   return useQuery({
     queryKey: ['admin', 'peer-integrations'],
@@ -57,6 +65,14 @@ export function useDeletePeerIntegration() {
   return useMutation({
     mutationFn: (id: string) => adminApi.deletePeerIntegration(id),
     onSuccess: invalidate,
+  });
+}
+
+/** A mutation rather than a query — reveals are on-demand and shouldn't be
+ * cached/refetched silently in the background like normal query data. */
+export function useRevealPeerIntegrationKey() {
+  return useMutation({
+    mutationFn: (id: string) => adminApi.revealPeerIntegrationKey(id),
   });
 }
 

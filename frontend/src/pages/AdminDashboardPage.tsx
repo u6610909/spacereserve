@@ -9,8 +9,10 @@ import {
   useAuditLogs,
   useCreatePeerIntegration,
   useDeletePeerIntegration,
+  useDeletePeerKey,
   useIssuePeerKey,
   usePeerIntegrations,
+  useRevealPeerIntegrationKey,
   useReservationSearch,
   useSystemOverview,
   useUtilization,
@@ -217,6 +219,60 @@ function AddPeerIntegrationModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function EyeIcon({ open }: { open: boolean }) {
+  return open ? (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-4 w-4">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
+      />
+      <circle cx="12" cy="12" r="2.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-4 w-4">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3 3l18 18M10.6 10.7a2.75 2.75 0 0 0 3.9 3.9M9.4 5.7A10.9 10.9 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a13.6 13.6 0 0 1-3.1 3.9M6.5 7.4C4 9.2 2.5 12 2.5 12S6 18.5 12 18.5a9.9 9.9 0 0 0 3-.5"
+      />
+    </svg>
+  );
+}
+
+/** Reveals a peer integration's full raw key on demand — fetched fresh each
+ * toggle-on rather than cached, since it's a real secret leaving the DB. */
+function RevealKeyButton({ id, masked }: { id: string; masked: string }) {
+  const reveal = useRevealPeerIntegrationKey();
+  const [shown, setShown] = useState<string | null>(null);
+
+  async function toggle() {
+    if (shown) {
+      setShown(null);
+      reveal.reset();
+      return;
+    }
+    const res = await reveal.mutateAsync(id);
+    setShown(res.apiKey);
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="font-mono">{shown ?? masked}</span>
+      <button
+        type="button"
+        onClick={() => void toggle()}
+        disabled={reveal.isPending}
+        aria-label={shown ? 'Hide key' : 'Reveal key'}
+        title={shown ? 'Hide key' : 'Reveal key'}
+        className="rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+      >
+        <EyeIcon open={Boolean(shown)} />
+      </button>
+    </span>
+  );
+}
+
 function PeerApiSection() {
   const integrations = usePeerIntegrations();
   const deleteIntegration = useDeletePeerIntegration();
@@ -272,7 +328,7 @@ function PeerApiSection() {
                   </Button>
                 </div>
                 <div className="text-xs text-slate-500">
-                  {p.baseUrl} · key <span className="font-mono">{p.apiKeyMasked}</span>
+                  {p.baseUrl} · key <RevealKeyButton id={p.id} masked={p.apiKeyMasked} />
                 </div>
                 {p.notes && <div className="text-xs text-slate-400">{p.notes}</div>}
               </li>
@@ -523,6 +579,7 @@ export function AdminDashboardPage() {
   const overview = useSystemOverview();
   const audit = useAuditLogs(50);
   const utilization = useUtilization();
+  const deleteKey = useDeletePeerKey();
 
   return (
     <div className="flex flex-col gap-8">
@@ -557,14 +614,24 @@ export function AdminDashboardPage() {
               ) : (
                 <ul className="divide-y divide-slate-100">
                   {overview.data.apiKeys.map((key) => (
-                    <li key={key.name} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <li key={key.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
                       <div>
                         <div className="font-medium text-slate-900">{key.name}</div>
                         <div className="text-xs text-slate-400">Issued {formatDateTime(key.createdAt)}</div>
                       </div>
-                      <span className="text-slate-500">
-                        {key.lastUsedAt ? `Last used ${formatDateTime(key.lastUsedAt)}` : 'Never used'}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-slate-500">
+                          {key.lastUsedAt ? `Last used ${formatDateTime(key.lastUsedAt)}` : 'Never used'}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={deleteKey.isPending}
+                          onClick={() => deleteKey.mutate(key.id)}
+                        >
+                          Revoke
+                        </Button>
+                      </div>
                     </li>
                   ))}
                 </ul>

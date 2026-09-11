@@ -9,9 +9,11 @@ import {
   auditLogs,
   createPeerIntegration,
   deletePeerIntegration,
+  deletePeerKey,
   issuePeerKey,
   listPeerIntegrations,
   overview,
+  revealPeerIntegrationKey,
   searchReservations,
   utilization,
 } from './admin.controller';
@@ -20,6 +22,7 @@ import {
   createPeerIntegrationSchema,
   issuePeerKeySchema,
   peerIntegrationIdParamSchema,
+  peerKeyIdParamSchema,
   reservationSearchQuerySchema,
 } from './admin.schema';
 
@@ -44,6 +47,13 @@ adminRoutes.get(
 // Issue a new x-api-key for any partner team calling *our* peer endpoint —
 // not limited to FinderAI. See src/modules/external/ for what it unlocks.
 adminRoutes.post('/peer-keys', requireAuth, adminOnly, validate({ body: issuePeerKeySchema }), issuePeerKey);
+adminRoutes.delete(
+  '/peer-keys/:id',
+  requireAuth,
+  adminOnly,
+  validate({ params: peerKeyIdParamSchema }),
+  deletePeerKey,
+);
 
 // Bookkeeping for peer APIs *we* consume — see admin.service.ts
 // (listPeerIntegrations doc comment) for why this isn't a generic caller.
@@ -54,6 +64,13 @@ adminRoutes.post(
   adminOnly,
   validate({ body: createPeerIntegrationSchema }),
   createPeerIntegration,
+);
+adminRoutes.get(
+  '/peer-integrations/:id/reveal',
+  requireAuth,
+  adminOnly,
+  validate({ params: peerIntegrationIdParamSchema }),
+  revealPeerIntegrationKey,
 );
 adminRoutes.delete(
   '/peer-integrations/:id',

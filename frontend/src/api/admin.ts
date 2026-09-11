@@ -24,8 +24,16 @@ export function issuePeerKey(name: string): Promise<IssuedPeerKey> {
   return post('/admin/peer-keys', { name });
 }
 
+export function deletePeerKey(id: string): Promise<void> {
+  return del(`/admin/peer-keys/${id}`);
+}
+
 export function peerIntegrations(): Promise<{ peerIntegrations: PeerIntegration[] }> {
   return get('/admin/peer-integrations');
+}
+
+export function revealPeerIntegrationKey(id: string): Promise<{ apiKey: string }> {
+  return get(`/admin/peer-integrations/${id}/reveal`);
 }
 
 export interface CreatePeerIntegrationInput {

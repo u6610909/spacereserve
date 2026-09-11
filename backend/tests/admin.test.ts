@@ -193,6 +193,42 @@ describe('POST /admin/peer-keys', () => {
   });
 });
 
+describe('DELETE /admin/peer-keys/:id', () => {
+  it('STUDENT/STAFF cannot delete a key', async () => {
+    const issued = await getPrisma().apiKey.create({ data: { name: 'ToDelete', keyHash: 'deadbeef' } });
+    const student = await loginAs('peerkey-del-student@admin.test', 'STUDENT');
+
+    const res = await request(app)
+      .delete(`${config.basePath}/admin/peer-keys/${issued.id}`)
+      .set('Authorization', `Bearer ${student}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('ADMIN can revoke a peer key, and it disappears from the overview', async () => {
+    const admin = await loginAs('peerkey-del-admin-2@admin.test', 'ADMIN');
+    const issued = await getPrisma().apiKey.create({ data: { name: 'RevokeMe', keyHash: 'cafebabe' } });
+
+    const del = await request(app)
+      .delete(`${config.basePath}/admin/peer-keys/${issued.id}`)
+      .set('Authorization', `Bearer ${admin}`);
+    expect(del.status).toBe(204);
+
+    const overview = await request(app)
+      .get(`${config.basePath}/admin/stats/overview`)
+      .set('Authorization', `Bearer ${admin}`);
+    const names = (overview.body as { apiKeys: { name: string }[] }).apiKeys.map((k) => k.name);
+    expect(names).not.toContain('RevokeMe');
+  });
+
+  it('404s for a key that does not exist', async () => {
+    const admin = await loginAs('peerkey-del-admin-3@admin.test', 'ADMIN');
+    const res = await request(app)
+      .delete(`${config.basePath}/admin/peer-keys/00000000-0000-0000-0000-000000000000`)
+      .set('Authorization', `Bearer ${admin}`);
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('/admin/peer-integrations', () => {
   it('STUDENT cannot list, create, or delete', async () => {
     const student = await loginAs('peerint-student@admin.test', 'STUDENT');
@@ -263,6 +299,36 @@ describe('/admin/peer-integrations', () => {
       .set('Authorization', `Bearer ${admin}`)
       .send({ name: 'BadUrlTeam', baseUrl: 'not-a-url', apiKey: 'k' });
     expect(badUrl.status).toBe(400);
+  });
+
+  it('ADMIN can reveal the full raw key; STUDENT cannot', async () => {
+    const admin = await loginAs('peerint-reveal-admin@admin.test', 'ADMIN');
+    const student = await loginAs('peerint-reveal-student@admin.test', 'STUDENT');
+
+    const created = await request(app)
+      .post(`${config.basePath}/admin/peer-integrations`)
+      .set('Authorization', `Bearer ${admin}`)
+      .send({ name: 'RevealTeam', baseUrl: 'https://reveal.example.com/api', apiKey: 'reveal_secret_abcdef1234' });
+    const id = (created.body as { peerIntegration: { id: string } }).peerIntegration.id;
+
+    const asStudent = await request(app)
+      .get(`${config.basePath}/admin/peer-integrations/${id}/reveal`)
+      .set('Authorization', `Bearer ${student}`);
+    expect(asStudent.status).toBe(403);
+
+    const asAdmin = await request(app)
+      .get(`${config.basePath}/admin/peer-integrations/${id}/reveal`)
+      .set('Authorization', `Bearer ${admin}`);
+    expect(asAdmin.status).toBe(200);
+    expect((asAdmin.body as { apiKey: string }).apiKey).toBe('reveal_secret_abcdef1234');
+  });
+
+  it('404s revealing a peer integration that does not exist', async () => {
+    const admin = await loginAs('peerint-reveal-admin-2@admin.test', 'ADMIN');
+    const res = await request(app)
+      .get(`${config.basePath}/admin/peer-integrations/00000000-0000-0000-0000-000000000000/reveal`)
+      .set('Authorization', `Bearer ${admin}`);
+    expect(res.status).toBe(404);
   });
 });
 

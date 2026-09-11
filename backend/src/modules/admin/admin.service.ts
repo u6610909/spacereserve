@@ -80,7 +80,7 @@ export interface SystemOverview {
   usersByRole: Record<Role, number>;
   rooms: { available: number; outOfOrder: number };
   reservations: { upcoming: number };
-  apiKeys: { name: string; createdAt: string; lastUsedAt: string | null }[];
+  apiKeys: { id: string; name: string; createdAt: string; lastUsedAt: string | null }[];
 }
 
 /**
@@ -89,8 +89,8 @@ export interface SystemOverview {
  * the room/reservation list endpoints are for). `apiKeys` never returns
  * `keyHash` — peer API keys are shown only as name + issued/last-used dates,
  * matching how `requireApiKey` treats the raw value (never logged or exposed)
- * elsewhere. There's no delete route for `ApiKey`, so this list — newest
- * first — is already the full issuance history, not just the active set.
+ * elsewhere. Deleting one (see `deletePeerApiKey`) means this list is the
+ * *active* set, not necessarily the full issuance history any more.
  */
 export async function getSystemOverview(): Promise<SystemOverview> {
   const prisma = getPrisma();
@@ -100,7 +100,10 @@ export async function getSystemOverview(): Promise<SystemOverview> {
     prisma.reservation.count({
       where: { status: { in: ['CONFIRMED', 'OVERRIDDEN'] }, startTime: { gt: new Date() } },
     }),
-    prisma.apiKey.findMany({ select: { name: true, createdAt: true, lastUsedAt: true }, orderBy: { createdAt: 'desc' } }),
+    prisma.apiKey.findMany({
+      select: { id: true, name: true, createdAt: true, lastUsedAt: true },
+      orderBy: { createdAt: 'desc' },
+    }),
   ]);
 
   const usersByRole = { STUDENT: 0, STAFF: 0, ADMIN: 0 } as Record<Role, number>;
@@ -114,6 +117,7 @@ export async function getSystemOverview(): Promise<SystemOverview> {
     rooms: { available: roomsByStatus.AVAILABLE, outOfOrder: roomsByStatus.OUT_OF_ORDER },
     reservations: { upcoming: upcomingReservations },
     apiKeys: apiKeys.map((k) => ({
+      id: k.id,
       name: k.name,
       createdAt: k.createdAt.toISOString(),
       lastUsedAt: k.lastUsedAt?.toISOString() ?? null,
@@ -143,6 +147,20 @@ export async function issuePeerApiKey(name: string): Promise<IssuedPeerKey> {
     throw err;
   }
   return { name, key };
+}
+
+/** Revokes a peer key immediately — `requireApiKey` looks up the hash on
+ * every call, so deleting the row means the next request with this key
+ * fails auth right away, no separate "disable" flag needed. */
+export async function deletePeerApiKey(id: string): Promise<void> {
+  try {
+    await getPrisma().apiKey.delete({ where: { id } });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+      throw new NotFoundError('Peer API key not found');
+    }
+    throw err;
+  }
 }
 
 export interface PeerIntegrationSummary {
@@ -192,6 +210,17 @@ export async function createPeerIntegration(input: CreatePeerIntegrationInput): 
     if (isUniqueConstraintError(err)) throw new ConflictError(`A peer integration named "${input.name}" already exists`);
     throw err;
   }
+}
+
+/**
+ * Reveals the full raw key for one peer integration — the list endpoint
+ * above only ever returns it masked. ADMIN-only route (see admin.routes.ts);
+ * this is the one place the real secret leaves the database at all.
+ */
+export async function revealPeerIntegrationKey(id: string): Promise<string> {
+  const row = await getPrisma().peerIntegration.findUnique({ where: { id } });
+  if (!row) throw new NotFoundError('Peer integration not found');
+  return row.apiKey;
 }
 
 export async function deletePeerIntegration(id: string): Promise<void> {

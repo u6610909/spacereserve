@@ -41,10 +41,28 @@ export const issuePeerKey: RequestHandler = async (req, res, next) => {
   }
 };
 
+export const deletePeerKey: RequestHandler = async (req, res, next) => {
+  try {
+    await adminService.deletePeerApiKey(req.params.id as string);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const listPeerIntegrations: RequestHandler = async (_req, res, next) => {
   try {
     const peerIntegrations = await adminService.listPeerIntegrations();
     res.status(200).json({ peerIntegrations });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const revealPeerIntegrationKey: RequestHandler = async (req, res, next) => {
+  try {
+    const apiKey = await adminService.revealPeerIntegrationKey(req.params.id as string);
+    res.status(200).json({ apiKey });
   } catch (err) {
     next(err);
   }
