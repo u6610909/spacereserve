@@ -106,3 +106,18 @@ export interface PeerIntegration {
   notes: string | null;
   createdAt: string;
 }
+
+export interface ReservationSearchResult {
+  id: string;
+  roomName: string;
+  roomCode: string | null;
+  building: string;
+  organizerName: string;
+  organizerEmail: string;
+  attendees: { name: string; email: string }[];
+  headcount: number;
+  startTime: string;
+  endTime: string;
+  status: ReservationStatus;
+  purpose: string | null;
+}

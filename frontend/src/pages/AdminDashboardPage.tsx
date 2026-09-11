@@ -11,10 +11,13 @@ import {
   useDeletePeerIntegration,
   useIssuePeerKey,
   usePeerIntegrations,
+  useReservationSearch,
   useSystemOverview,
   useUtilization,
 } from '../hooks/useAdmin';
 import { formatDateTime } from '../lib/format';
+
+import type { RoomUtilization } from '../api/types';
 
 function StatTile({ value, label }: { value: string | number; label: string }) {
   return (
@@ -227,6 +230,146 @@ function PeerApiSection() {
   );
 }
 
+const UTILIZATION_CHART_ROOM_COUNT = 12;
+
+/** Horizontal bar chart, one sequential hue (booked hours = magnitude, one series). */
+function UtilizationChart({ rooms }: { rooms: RoomUtilization[] }) {
+  const sorted = [...rooms].sort((a, b) => b.totalBookedHours - a.totalBookedHours);
+  const shown = sorted.slice(0, UTILIZATION_CHART_ROOM_COUNT);
+  const max = Math.max(1, ...shown.map((r) => r.totalBookedHours));
+
+  if (shown.length === 0) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        No bookings yet — the chart fills in once rooms are reserved.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="mb-3 flex items-baseline justify-between">
+        <span className="text-xs font-medium uppercase text-slate-500">Booked hours by room</span>
+        {sorted.length > shown.length && (
+          <span className="text-xs text-slate-400">Top {shown.length} of {sorted.length}</span>
+        )}
+      </div>
+      <div className="flex flex-col gap-2.5">
+        {shown.map((r) => {
+          const pct = max === 0 ? 0 : (r.totalBookedHours / max) * 100;
+          return (
+            <div key={r.roomId} className="flex items-center gap-3">
+              <div className="w-32 shrink-0 truncate text-sm text-slate-600" title={r.name}>
+                {r.name}
+              </div>
+              <div className="h-3 flex-1 overflow-hidden rounded-sm bg-slate-100">
+                <div className="h-full rounded-r-[4px] bg-brand-500" style={{ width: `${pct}%` }} />
+              </div>
+              <div className="w-14 shrink-0 text-right text-xs font-medium tabular-nums text-slate-700">
+                {r.totalBookedHours}h
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function BookingsSearchSection() {
+  const [q, setQ] = useState('');
+  const [submittedQ, setSubmittedQ] = useState('');
+  const search = useReservationSearch({ q: submittedQ || undefined });
+
+  return (
+    <section className="flex flex-col gap-3">
+      <div>
+        <h2 className="text-sm font-semibold text-slate-900">Bookings</h2>
+        <p className="text-xs text-slate-500">
+          Search reservations by organizer, attendee, or room — distinct from the audit trail below, which only
+          logs staff/admin actions.
+        </p>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSubmittedQ(q.trim());
+        }}
+        className="flex gap-2"
+      >
+        <div className="flex-1">
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by name, email, room, or code…"
+            className="w-full"
+          />
+        </div>
+        <Button type="submit">Search</Button>
+        {submittedQ && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setQ('');
+              setSubmittedQ('');
+            }}
+          >
+            Clear
+          </Button>
+        )}
+      </form>
+
+      <ErrorBanner error={search.error} />
+      {search.isLoading ? (
+        <Spinner />
+      ) : search.data && search.data.reservations.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">
+          {submittedQ ? `No bookings match "${submittedQ}".` : 'No bookings yet.'}
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
+              <tr>
+                <th className="whitespace-nowrap px-4 py-2">Room</th>
+                <th className="whitespace-nowrap px-4 py-2">Organizer</th>
+                <th className="whitespace-nowrap px-4 py-2">Attendees</th>
+                <th className="whitespace-nowrap px-4 py-2">Headcount</th>
+                <th className="whitespace-nowrap px-4 py-2">When</th>
+                <th className="whitespace-nowrap px-4 py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {search.data?.reservations.map((r) => (
+                <tr key={r.id}>
+                  <td className="whitespace-nowrap px-4 py-2 font-medium text-slate-900">
+                    {r.roomName} {r.roomCode && <span className="text-slate-400">({r.roomCode})</span>}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-2 text-slate-600">{r.organizerName}</td>
+                  <td className="max-w-xs px-4 py-2 text-slate-600">
+                    {r.attendees.length === 0 ? (
+                      <span className="text-slate-400">None</span>
+                    ) : (
+                      r.attendees.map((a) => a.name).join(', ')
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-2 text-slate-600">{r.headcount}</td>
+                  <td className="whitespace-nowrap px-4 py-2 text-slate-500">
+                    {formatDateTime(r.startTime)} – {formatDateTime(r.endTime)}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-2 text-slate-600">{r.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function AdminDashboardPage() {
   const overview = useSystemOverview();
   const audit = useAuditLogs(50);
@@ -293,6 +436,7 @@ export function AdminDashboardPage() {
               <StatTile value={utilization.data.totals.totalReservations} label="Reservations" />
               <StatTile value={`${utilization.data.totals.totalBookedHours}h`} label="Booked hours" />
             </div>
+            <UtilizationChart rooms={utilization.data.rooms} />
             <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
@@ -319,8 +463,13 @@ export function AdminDashboardPage() {
         ) : null}
       </section>
 
+      <BookingsSearchSection />
+
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-slate-900">Audit log</h2>
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">Audit log</h2>
+          <p className="text-xs text-slate-500">Staff/admin actions only — for bookings, use search above.</p>
+        </div>
         <ErrorBanner error={audit.error} />
         {audit.isLoading ? (
           <Spinner />

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import * as adminApi from '../api/admin';
-import type { CreatePeerIntegrationInput } from '../api/admin';
+import type { CreatePeerIntegrationInput, ReservationSearchInput } from '../api/admin';
 
 export function useAuditLogs(limit = 100) {
   return useQuery({
@@ -57,5 +57,12 @@ export function useDeletePeerIntegration() {
   return useMutation({
     mutationFn: (id: string) => adminApi.deletePeerIntegration(id),
     onSuccess: invalidate,
+  });
+}
+
+export function useReservationSearch(input: ReservationSearchInput) {
+  return useQuery({
+    queryKey: ['admin', 'reservations', input],
+    queryFn: () => adminApi.searchReservations(input),
   });
 }

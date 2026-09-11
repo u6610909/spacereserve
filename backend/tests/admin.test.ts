@@ -264,3 +264,81 @@ describe('/admin/peer-integrations', () => {
     expect(badUrl.status).toBe(400);
   });
 });
+
+describe('GET /admin/reservations', () => {
+  it('STUDENT/STAFF are rejected', async () => {
+    const student = await loginAs('resq-student@admin.test', 'STUDENT');
+    const res = await request(app)
+      .get(`${config.basePath}/admin/reservations`)
+      .set('Authorization', `Bearer ${student}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('finds a reservation by organizer, attendee, or room, with headcount', async () => {
+    const admin = await loginAs('resq-admin@admin.test', 'ADMIN');
+    const room = await getPrisma().room.create({
+      data: { name: 'Search Room', code: 'SR-1', building: 'B', capacity: 4 },
+    });
+    const organizer = await getPrisma().user.create({
+      data: { adObjectId: 'resq-organizer', email: 'organizer@resq.test', name: 'Ada Organizer' },
+    });
+    const attendee = await getPrisma().user.create({
+      data: { adObjectId: 'resq-attendee', email: 'attendee@resq.test', name: 'Bo Attendee' },
+    });
+    const reservation = await getPrisma().reservation.create({
+      data: {
+        roomId: room.id,
+        organizerId: organizer.id,
+        startTime: new Date('2026-02-01T10:00:00Z'),
+        endTime: new Date('2026-02-01T11:00:00Z'),
+      },
+    });
+    await getPrisma().reservationAttendee.create({
+      data: { reservationId: reservation.id, userId: attendee.id },
+    });
+
+    for (const q of ['Ada Organizer', 'Bo Attendee', 'Search Room', 'SR-1']) {
+      const res = await request(app)
+        .get(`${config.basePath}/admin/reservations`)
+        .query({ q })
+        .set('Authorization', `Bearer ${admin}`);
+      expect(res.status).toBe(200);
+      const body = res.body as { reservations: { id: string; headcount: number }[] };
+      expect(body.reservations.find((r) => r.id === reservation.id)).toMatchObject({ headcount: 2 });
+    }
+
+    const noMatch = await request(app)
+      .get(`${config.basePath}/admin/reservations`)
+      .query({ q: 'nobody-matches-this' })
+      .set('Authorization', `Bearer ${admin}`);
+    expect((noMatch.body as { reservations: unknown[] }).reservations).toHaveLength(0);
+  });
+
+  it('filters by time range', async () => {
+    const admin = await loginAs('resq-admin-2@admin.test', 'ADMIN');
+    const room = await getPrisma().room.create({ data: { name: 'Range Room', building: 'B', capacity: 4 } });
+    const organizer = await getPrisma().user.create({
+      data: { adObjectId: 'resq-range-organizer', email: 'range@resq.test', name: 'Range Organizer' },
+    });
+    await getPrisma().reservation.create({
+      data: {
+        roomId: room.id,
+        organizerId: organizer.id,
+        startTime: new Date('2026-03-01T10:00:00Z'),
+        endTime: new Date('2026-03-01T11:00:00Z'),
+      },
+    });
+
+    const inRange = await request(app)
+      .get(`${config.basePath}/admin/reservations`)
+      .query({ from: '2026-03-01T00:00:00Z', to: '2026-03-02T00:00:00Z' })
+      .set('Authorization', `Bearer ${admin}`);
+    expect((inRange.body as { reservations: unknown[] }).reservations.length).toBeGreaterThanOrEqual(1);
+
+    const outOfRange = await request(app)
+      .get(`${config.basePath}/admin/reservations`)
+      .query({ from: '2026-04-01T00:00:00Z' })
+      .set('Authorization', `Bearer ${admin}`);
+    expect((outOfRange.body as { reservations: unknown[] }).reservations).toHaveLength(0);
+  });
+});

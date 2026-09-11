@@ -22,3 +22,12 @@ export const createPeerIntegrationSchema = z.object({
 export type CreatePeerIntegrationInput = z.infer<typeof createPeerIntegrationSchema>;
 
 export const peerIntegrationIdParamSchema = z.object({ id: z.string().uuid() });
+
+export const reservationSearchQuerySchema = z.object({
+  q: z.string().trim().max(200).optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  limit: z.coerce.number().int().positive().max(500).default(100),
+});
+
+export type ReservationSearchQuery = z.infer<typeof reservationSearchQuerySchema>;

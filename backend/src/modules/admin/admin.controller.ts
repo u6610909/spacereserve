@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 
 import * as adminService from './admin.service';
-import type { AuditLogQuery, CreatePeerIntegrationInput, IssuePeerKeyInput } from './admin.schema';
+import type { AuditLogQuery, CreatePeerIntegrationInput, IssuePeerKeyInput, ReservationSearchQuery } from './admin.schema';
 
 export const auditLogs: RequestHandler = async (req, res, next) => {
   try {
@@ -63,6 +63,16 @@ export const deletePeerIntegration: RequestHandler = async (req, res, next) => {
   try {
     await adminService.deletePeerIntegration(req.params.id as string);
     res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const searchReservations: RequestHandler = async (req, res, next) => {
+  try {
+    const query = req.query as unknown as ReservationSearchQuery;
+    const reservations = await adminService.searchReservations(query);
+    res.status(200).json({ reservations });
   } catch (err) {
     next(err);
   }
