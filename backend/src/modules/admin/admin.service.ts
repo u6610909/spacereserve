@@ -6,7 +6,7 @@ import { hashApiKey } from '../../lib/apiKey';
 import { ConflictError, NotFoundError } from '../../lib/errors';
 import { getPrisma } from '../../lib/prisma';
 
-import type { CreatePeerIntegrationInput } from './admin.schema';
+import type { CreatePeerIntegrationInput, ReservationSearchQuery } from './admin.schema';
 import type { AuditLog, PeerIntegration, Room, User } from '@prisma/client';
 import type { Role } from '@prisma/client';
 
@@ -197,4 +197,72 @@ export async function deletePeerIntegration(id: string): Promise<void> {
     }
     throw err;
   }
+}
+
+export interface ReservationSearchResult {
+  id: string;
+  roomName: string;
+  roomCode: string | null;
+  building: string;
+  organizerName: string;
+  organizerEmail: string;
+  attendees: { name: string; email: string }[];
+  headcount: number;
+  startTime: string;
+  endTime: string;
+  status: string;
+  purpose: string | null;
+}
+
+/**
+ * "Who booked with whom" view for admins — distinct from the AuditLog above,
+ * which only records STAFF/ADMIN actions (room create, cancel, override) and
+ * has no organizer/attendee/headcount fields. `q` matches room name/code,
+ * organizer name/email, or any attendee's name/email, case-insensitive.
+ */
+export async function searchReservations(query: ReservationSearchQuery): Promise<ReservationSearchResult[]> {
+  const { q, from, to, limit } = query;
+  const insensitive = { mode: 'insensitive' as const };
+
+  const reservations = await getPrisma().reservation.findMany({
+    where: {
+      ...(from ? { startTime: { gte: from } } : {}),
+      ...(to ? { endTime: { lte: to } } : {}),
+      ...(q
+        ? {
+            OR: [
+              { purpose: { contains: q, ...insensitive } },
+              { room: { name: { contains: q, ...insensitive } } },
+              { room: { code: { contains: q, ...insensitive } } },
+              { organizer: { name: { contains: q, ...insensitive } } },
+              { organizer: { email: { contains: q, ...insensitive } } },
+              { attendees: { some: { user: { name: { contains: q, ...insensitive } } } } },
+              { attendees: { some: { user: { email: { contains: q, ...insensitive } } } } },
+            ],
+          }
+        : {}),
+    },
+    include: {
+      room: true,
+      organizer: true,
+      attendees: { include: { user: true } },
+    },
+    orderBy: { startTime: 'desc' },
+    take: limit,
+  });
+
+  return reservations.map((r) => ({
+    id: r.id,
+    roomName: r.room.name,
+    roomCode: r.room.code,
+    building: r.room.building,
+    organizerName: r.organizer.name,
+    organizerEmail: r.organizer.email,
+    attendees: r.attendees.map((a) => ({ name: a.user.name, email: a.user.email })),
+    headcount: r.attendees.length + 1,
+    startTime: r.startTime.toISOString(),
+    endTime: r.endTime.toISOString(),
+    status: r.status,
+    purpose: r.purpose,
+  }));
 }
