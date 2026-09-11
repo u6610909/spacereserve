@@ -9,7 +9,7 @@ directly — see also docs/architecture.md for the URL.
 booked at that instant, so they can notify the likely owner.
 
 ```
-GET https://ratchanon-bad2026.eastasia.cloudapp.azure.com/spacereserve/api/v1/external/bookings/active-at?room=<room name>&at=<ISO 8601 datetime>
+GET https://spacereserve.malaysiawest.cloudapp.azure.com/spacereserve/api/v1/external/bookings/active-at?room=<room name>&at=<ISO 8601 datetime>
 x-api-key: <key we issue to FinderAI>
 ```
 

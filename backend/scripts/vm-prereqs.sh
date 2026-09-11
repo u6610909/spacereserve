@@ -2,9 +2,9 @@
 # One-time Azure VM prep for SpaceReserve. Run ONCE, as a sudo-capable user,
 # before the first ./deploy.sh. Idempotent — safe to re-run.
 #
-# What it does NOT touch: nginx, MySQL, WordPress, the pm2 lab API, or the
-# existing SSL cert (project rules). The SpaceReserve nginx
-# location block is added by hand — see nginx/spacereserve.conf and DEPLOY.md.
+# What it does NOT touch: nginx or the SSL cert (both set up separately via
+# certbot — see DEPLOY.md). The SpaceReserve nginx config is added by hand —
+# see nginx/spacereserve.conf and DEPLOY.md.
 set -euo pipefail
 
 log()  { printf '[vm-prereqs] %s\n' "$1"; }

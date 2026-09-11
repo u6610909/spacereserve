@@ -2,9 +2,8 @@
 # Deploy / roll back SpaceReserve on the Azure VM.
 #
 # NEVER builds an image here — the VM is memory-starved (already OOM-killed
-# once; needed a swapfile just to run `npm install`) and runs nginx + MySQL +
-# WordPress + the pm2 lab API alongside this. CI builds and pushes to GHCR
-# (project rule); this script only pulls, migrates, and restarts.
+# once; needed a swapfile just to run `npm install`). CI builds and pushes to
+# GHCR (project rule); this script only pulls, migrates, and restarts.
 #
 # First-time setup: see DEPLOY.md. In short — run scripts/vm-prereqs.sh once,
 # then `cp .env.prod.example .env` and fill in the four Azure values.
