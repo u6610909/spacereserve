@@ -7,6 +7,7 @@ import { lookupLostItems, type LostItemNotice } from '../../integrations/findera
 import {
   sendReservationCancelledEmail,
   sendReservationConfirmedEmail,
+  sendReservationInvitedEmail,
   sendReservationOverriddenEmail,
 } from '../../integrations/sendgrid';
 
@@ -19,8 +20,15 @@ const CHECKIN_WINDOW_BEFORE_MS = 15 * 60 * 1000;
 const reservationInclude = {
   room: true,
   organizer: true,
-  attendees: true,
+  attendees: { include: { user: true } },
 } satisfies Prisma.ReservationInclude;
+
+/** Organizer + every attendee's email — the one list every "this reservation
+ * changed" notice goes to (confirm/cancel/override). An invite email is
+ * different: it goes to just the one newly-added attendee, from addAttendee. */
+function allRecipientEmails(reservation: ReservationWithRelations): string[] {
+  return [reservation.organizer.email, ...reservation.attendees.map((a) => a.user.email)];
+}
 
 type ReservationWithRelations = Prisma.ReservationGetPayload<{ include: typeof reservationInclude }>;
 
@@ -90,12 +98,11 @@ export async function createReservation(
     });
   });
 
-  await sendReservationConfirmedEmail({
-    to: reservation.organizer.email,
-    roomName: room.name,
-    startTime,
-    endTime,
-  });
+  await Promise.all(
+    allRecipientEmails(reservation).map((to) =>
+      sendReservationConfirmedEmail({ to, roomName: room.name, startTime, endTime }),
+    ),
+  );
 
   return reservation;
 }
@@ -146,12 +153,16 @@ export async function cancelReservation(actorId: string, actorRole: Role, id: st
     });
   }
 
-  await sendReservationCancelledEmail({
-    to: reservation.organizer.email,
-    roomName: reservation.room.name,
-    startTime: reservation.startTime,
-    endTime: reservation.endTime,
-  });
+  await Promise.all(
+    allRecipientEmails(reservation).map((to) =>
+      sendReservationCancelledEmail({
+        to,
+        roomName: reservation.room.name,
+        startTime: reservation.startTime,
+        endTime: reservation.endTime,
+      }),
+    ),
+  );
 
   return updated;
 }
@@ -166,12 +177,16 @@ export async function overrideReservation(actorId: string, id: string): Promise<
 
   await writeAuditLog({ actorId, action: 'RESERVATION_OVERRIDDEN', entity: 'Reservation', entityId: id });
 
-  await sendReservationOverriddenEmail({
-    to: reservation.organizer.email,
-    roomName: reservation.room.name,
-    startTime: reservation.startTime,
-    endTime: reservation.endTime,
-  });
+  await Promise.all(
+    allRecipientEmails(reservation).map((to) =>
+      sendReservationOverriddenEmail({
+        to,
+        roomName: reservation.room.name,
+        startTime: reservation.startTime,
+        endTime: reservation.endTime,
+      }),
+    ),
+  );
 
   return updated;
 }
@@ -196,6 +211,14 @@ export async function addAttendee(actorId: string, reservationId: string, userId
     if (isUniqueConstraintError(err)) throw new ConflictError('User is already invited');
     throw err;
   }
+
+  await sendReservationInvitedEmail({
+    to: user.email,
+    organizerName: reservation.organizer.name,
+    roomName: reservation.room.name,
+    startTime: reservation.startTime,
+    endTime: reservation.endTime,
+  });
 }
 
 export async function removeAttendee(actorId: string, reservationId: string, userId: string): Promise<void> {

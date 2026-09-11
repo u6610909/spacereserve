@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { config } from '../src/config';
 import { disconnectPrisma, getPrisma } from '../src/lib/prisma';
@@ -7,6 +7,18 @@ import { disconnectPrisma, getPrisma } from '../src/lib/prisma';
 import { buildTestApp, resetDb } from './helpers/testApp';
 
 import type { Express } from 'express';
+
+// Mocked so notification recipients can be asserted directly, independent of
+// whether SENDGRID_API_KEY is set (TEST_SECRETS leaves it blank on purpose —
+// see config/index.ts — so the real integration always no-ops in tests).
+vi.mock('../src/integrations/sendgrid', () => ({
+  sendReservationConfirmedEmail: vi.fn(),
+  sendReservationCancelledEmail: vi.fn(),
+  sendReservationOverriddenEmail: vi.fn(),
+  sendReservationInvitedEmail: vi.fn(),
+}));
+
+import * as sendgrid from '../src/integrations/sendgrid';
 
 let app: Express;
 
@@ -26,6 +38,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDb();
+  vi.clearAllMocks();
 });
 
 afterAll(async () => {
@@ -290,5 +303,103 @@ describe('attendees', () => {
       .set('Authorization', `Bearer ${stranger.token}`)
       .send({ userId: stranger.userId });
     expect(res.status).toBe(403);
+  });
+});
+
+describe('reservation email notifications', () => {
+  it('confirm/cancel/override notify the organizer AND every attendee, not just the organizer', async () => {
+    const organizer = await loginAs('notify-organizer@res.test', 'STUDENT');
+    const guest = await loginAs('notify-guest@res.test', 'STUDENT');
+    const room = await getPrisma().room.create({ data: { name: 'Notify Room', building: 'B', capacity: 4 } });
+
+    const created = await request(app)
+      .post(`${config.basePath}/reservations`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({
+        roomId: room.id,
+        startTime: hoursFromNow(2),
+        endTime: hoursFromNow(3),
+        attendeeIds: [guest.userId],
+      });
+    expect(created.status).toBe(201);
+    const id = (created.body as { reservation: { id: string } }).reservation.id;
+
+    const confirmedTo = vi.mocked(sendgrid.sendReservationConfirmedEmail).mock.calls.map((c) => c[0].to);
+    expect(confirmedTo).toEqual(
+      expect.arrayContaining(['notify-organizer@res.test', 'notify-guest@res.test']),
+    );
+    expect(confirmedTo).toHaveLength(2);
+
+    const admin = await loginAs('notify-admin@res.test', 'ADMIN');
+    vi.clearAllMocks();
+    const overridden = await request(app)
+      .post(`${config.basePath}/reservations/${id}/override`)
+      .set('Authorization', `Bearer ${admin.token}`);
+    expect(overridden.status).toBe(200);
+    const overriddenTo = vi.mocked(sendgrid.sendReservationOverriddenEmail).mock.calls.map((c) => c[0].to);
+    expect(overriddenTo).toEqual(
+      expect.arrayContaining(['notify-organizer@res.test', 'notify-guest@res.test']),
+    );
+    expect(overriddenTo).toHaveLength(2);
+  });
+
+  it('cancel notifies the organizer AND every attendee', async () => {
+    const organizer = await loginAs('notify-cancel-organizer@res.test', 'STUDENT');
+    const guest = await loginAs('notify-cancel-guest@res.test', 'STUDENT');
+    const room = await getPrisma().room.create({ data: { name: 'Notify Cancel Room', building: 'B', capacity: 4 } });
+
+    const created = await request(app)
+      .post(`${config.basePath}/reservations`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({
+        roomId: room.id,
+        startTime: hoursFromNow(2),
+        endTime: hoursFromNow(3),
+        attendeeIds: [guest.userId],
+      });
+    const id = (created.body as { reservation: { id: string } }).reservation.id;
+    vi.clearAllMocks();
+
+    const cancelled = await request(app)
+      .delete(`${config.basePath}/reservations/${id}`)
+      .set('Authorization', `Bearer ${organizer.token}`);
+    expect(cancelled.status).toBe(204);
+
+    const cancelledTo = vi.mocked(sendgrid.sendReservationCancelledEmail).mock.calls.map((c) => c[0].to);
+    expect(cancelledTo).toEqual(
+      expect.arrayContaining(['notify-cancel-organizer@res.test', 'notify-cancel-guest@res.test']),
+    );
+    expect(cancelledTo).toHaveLength(2);
+  });
+
+  it('adding an attendee later emails only that attendee, not the organizer or other attendees', async () => {
+    const organizer = await loginAs('notify-invite-organizer@res.test', 'STUDENT');
+    const already = await loginAs('notify-invite-already@res.test', 'STUDENT');
+    const newGuest = await loginAs('notify-invite-newguest@res.test', 'STUDENT');
+    const room = await getPrisma().room.create({ data: { name: 'Notify Invite Room', building: 'B', capacity: 5 } });
+
+    const created = await request(app)
+      .post(`${config.basePath}/reservations`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({
+        roomId: room.id,
+        startTime: hoursFromNow(2),
+        endTime: hoursFromNow(3),
+        attendeeIds: [already.userId],
+      });
+    const id = (created.body as { reservation: { id: string } }).reservation.id;
+    vi.clearAllMocks();
+
+    const invited = await request(app)
+      .post(`${config.basePath}/reservations/${id}/attendees`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({ userId: newGuest.userId });
+    expect(invited.status).toBe(204);
+
+    expect(sendgrid.sendReservationInvitedEmail).toHaveBeenCalledTimes(1);
+    expect(sendgrid.sendReservationInvitedEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'notify-invite-newguest@res.test' }),
+    );
+    expect(sendgrid.sendReservationConfirmedEmail).not.toHaveBeenCalled();
   });
 });

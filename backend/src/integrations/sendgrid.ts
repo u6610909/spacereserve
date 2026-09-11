@@ -61,6 +61,21 @@ export async function sendReservationConfirmedEmail(details: ReservationEmailDet
   });
 }
 
+export interface ReservationInviteEmailDetails extends ReservationEmailDetails {
+  organizerName: string;
+}
+
+/** Sent once, to the attendee only, the moment the organizer adds them — not
+ * to the organizer or the other attendees (they already have their own
+ * confirmation). */
+export async function sendReservationInvitedEmail(details: ReservationInviteEmailDetails): Promise<void> {
+  await send({
+    to: details.to,
+    subject: `You're invited: ${details.roomName}`,
+    text: `${details.organizerName} added you to a booking for ${details.roomName}, ${details.startTime.toISOString()} to ${details.endTime.toISOString()}.`,
+  });
+}
+
 export async function sendReservationCancelledEmail(details: ReservationEmailDetails): Promise<void> {
   await send({
     to: details.to,
