@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { Button } from '../components/ui/Button';
 import { ErrorBanner } from '../components/ui/ErrorBanner';
@@ -28,36 +28,85 @@ function StatTile({ value, label }: { value: string | number; label: string }) {
   );
 }
 
-/** One-click copy for endpoints/keys — flips to "Copied" for 1.5s, no toast library needed. */
-function CopyButton({ value, label = 'Copy' }: { value: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
+/** navigator.clipboard.writeText can reject even from a real click — e.g.
+ * Chrome's "Document is not focused" if the tab lost focus a moment
+ * earlier — so this is a real fallback, not a legacy nicety. */
+function legacyCopy(value: string): boolean {
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch {
+    ok = false;
+  }
+  document.body.removeChild(textarea);
+  return ok;
+}
+
+/** One-click copy for endpoints/keys — only claims "Copied" once the copy
+ * actually succeeded. On failure, selects the text in place so the user can
+ * still Ctrl+C it themselves instead of silently ending up with nothing on
+ * their clipboard. */
+function CopyButton({ value, label = 'Copy', onFailure }: { value: string; label?: string; onFailure?: () => void }) {
+  const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+
+  async function handleCopy() {
+    let ok: boolean;
+    try {
+      await navigator.clipboard.writeText(value);
+      ok = true;
+    } catch {
+      ok = legacyCopy(value);
+    }
+    setStatus(ok ? 'copied' : 'failed');
+    if (!ok) onFailure?.();
+    setTimeout(() => setStatus('idle'), 1500);
+  }
+
   return (
-    <Button
-      type="button"
-      variant="secondary"
-      onClick={() => {
-        void navigator.clipboard.writeText(value);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      }}
-    >
-      {copied ? 'Copied' : label}
+    <Button type="button" variant="secondary" onClick={() => void handleCopy()}>
+      {status === 'copied' ? 'Copied' : status === 'failed' ? 'Selected — press Ctrl+C' : label}
     </Button>
   );
 }
 
 function CodeRow({ value }: { value: string }) {
+  const codeRef = useRef<HTMLElement>(null);
+
   return (
     <div className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-2">
-      <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-xs text-slate-700">{value}</code>
-      <CopyButton value={value} />
+      <code ref={codeRef} className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-xs text-slate-700">
+        {value}
+      </code>
+      <CopyButton
+        value={value}
+        onFailure={() => {
+          const el = codeRef.current;
+          if (!el) return;
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          const selection = window.getSelection();
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+        }}
+      />
     </div>
   );
 }
 
 /** Our one exposed peer capability — see docs/peer-api.md. Any partner team
- * gets this same URL, paired with a key issued to them below. */
-const OUR_ENDPOINT = `${window.location.origin}/spacereserve/api/v1/external/bookings/active-at?room=<room name>&at=<ISO 8601 datetime>`;
+ * gets this same URL, paired with a key issued to them below. Kept as a
+ * clean, real URL (no bracketed placeholders baked in) so Copy hands them
+ * something they can actually paste; the query params are documented
+ * separately since they're per-request, not part of the endpoint itself. */
+const OUR_ENDPOINT = `${window.location.origin}/spacereserve/api/v1/external/bookings/active-at`;
+const OUR_ENDPOINT_PARAMS = 'Query params: room=<room name>, at=<ISO 8601 datetime>';
 
 function IssueKeyModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
@@ -74,6 +123,7 @@ function IssueKeyModal({ onClose }: { onClose: () => void }) {
           <div>
             <div className="mb-1 text-xs font-medium uppercase text-slate-500">Endpoint</div>
             <CodeRow value={OUR_ENDPOINT} />
+            <p className="mt-1 text-xs text-slate-400">{OUR_ENDPOINT_PARAMS}</p>
           </div>
           <div>
             <div className="mb-1 text-xs font-medium uppercase text-slate-500">
@@ -177,10 +227,8 @@ function PeerApiSection() {
       <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4">
         <div>
           <div className="mb-1 text-sm font-medium text-slate-900">Our endpoint</div>
-          <p className="mb-2 text-xs text-slate-500">
-            Give this to any partner team — pair it with a key issued below. Not FinderAI-specific.
-          </p>
           <CodeRow value={OUR_ENDPOINT} />
+          <p className="mt-1 text-xs text-slate-400">{OUR_ENDPOINT_PARAMS}</p>
         </div>
         <Button type="button" variant="secondary" className="w-fit" onClick={() => setIssuing(true)}>
           + Issue key for a new team
