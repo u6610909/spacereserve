@@ -156,7 +156,7 @@ export function RoomDetailPage() {
         <div className="flex flex-col gap-5 lg:col-span-2">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold text-slate-900">{room.name}</h1>
+              <h1 className="font-display text-3xl font-semibold text-slate-900">{room.name}</h1>
               {room.code && (
                 <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-500">
                   {room.code}
