@@ -201,6 +201,33 @@ response is a plain keyword match instead — never a 500.
 ```
 Counts `CONFIRMED` and `OVERRIDDEN` reservations; excludes `CANCELLED`.
 
+### `GET /admin/stats/overview` — ADMIN
+Users by role, room status counts, upcoming reservations, and every issued peer key's name +
+last-used (never the key itself). See [peer-api.md](peer-api.md).
+
+### `POST /admin/peer-keys` — ADMIN
+Issue an `x-api-key` for our exposed peer endpoint to any partner team — not limited to FinderAI.
+```json
+{ "name": "EduCore" }
+```
+`{ "name": "EduCore", "key": "<64-char hex>" }` — the raw key, shown exactly once. `409` if that
+name is already in use.
+
+### `GET /admin/peer-integrations` — ADMIN
+Bookkeeping for peer APIs *we* consume — not wired to a generic caller (see peer-api.md). `apiKey`
+is masked to its last 4 characters.
+```json
+{ "peerIntegrations": [{ "id", "name", "baseUrl", "apiKeyMasked": "••••1234", "notes", "createdAt" }] }
+```
+
+### `POST /admin/peer-integrations` — ADMIN
+```json
+{ "name": "EduCore", "baseUrl": "https://educore.example.com/api", "apiKey": "...", "notes": "optional" }
+```
+`409` on a duplicate name, `400` on a malformed `baseUrl`.
+
+### `DELETE /admin/peer-integrations/:id` — ADMIN
+
 ---
 
 ## Peer (external)

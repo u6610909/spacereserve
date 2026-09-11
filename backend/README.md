@@ -304,6 +304,10 @@ Partner: **Finder Portal (FinderAI)**, campus Lost & Found. Full contract in
   integration going down.
 - **Keys:** each side generates a 32-byte random hex key for the other, stores only its SHA-256
   hash (`ApiKey.keyHash`), and never logs or commits the raw value.
+- **Not FinderAI-only:** the Admin dashboard's Peer API section can issue a key for *any* partner
+  team against our one exposed endpoint (`POST /admin/peer-keys`), and record any partner's base
+  URL/key we plan to consume (`/admin/peer-integrations`, bookkeeping — see
+  [docs/peer-api.md](docs/peer-api.md)). Onboarding a second team needs no code change.
 
 ## Deployment
 

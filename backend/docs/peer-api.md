@@ -40,9 +40,11 @@ We deliberately don't distinguish "room not found" from "room free" — an unkno
 gets `reservation: null` rather than a 404, so a caller can't probe our room list via this
 endpoint.
 
-**Auth:** `x-api-key` header. We generate FinderAI a 32-byte random hex key and store only its
-SHA-256 hash in the `ApiKey` table (`backend/src/lib/apiKey.ts`); the raw key is never logged or
-committed. Missing or wrong key → `401`.
+**Auth:** `x-api-key` header. We generate a 32-byte random hex key and store only its SHA-256 hash
+in the `ApiKey` table (`backend/src/lib/apiKey.ts`); the raw key is never logged or committed.
+Missing or wrong key → `401`. Not FinderAI-specific — the Admin dashboard's Peer API section
+(`POST /admin/peer-keys`, ADMIN-only) issues a key for any partner name against this same
+endpoint, so onboarding a second or third team never needs a code change or a seed-script run.
 
 **Rate limit:** 60 requests/minute per key.
 
@@ -106,6 +108,18 @@ base URL is `FINDERAI_BASE_URL` (non-secret, their own public domain).
 - Falls back to `MockFinderAiClient` (always `[]`) when either `FINDERAI_API_KEY` or
   `FINDERAI_BASE_URL` is unset — same "degrade before real credentials exist" pattern as
   Gemini/ACS.
+
+## Recording other partners we plan to consume
+
+`PeerIntegration` (`GET`/`POST /admin/peer-integrations`, `DELETE /admin/peer-integrations/:id`,
+all ADMIN-only) is bookkeeping, not a generic caller — every partner's response shape is
+different, so actually calling one still means a real integration module like
+`src/integrations/finderai.ts`. It just keeps each partner's name / base URL / issued key in one
+place instead of scattered across chat history, since a class project ends up talking to more
+than one other team's API over the semester. The stored key is masked to its last 4 characters
+in every response — it's a real credential at rest (unlike `ApiKey`, we have to keep the raw
+value usable to call them later, not just compare a hash), so this table is ADMIN-only end to
+end.
 
 ## Key exchange — done, 12 Sep
 

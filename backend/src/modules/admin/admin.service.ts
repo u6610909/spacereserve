@@ -1,7 +1,18 @@
+import { randomBytes } from 'node:crypto';
+
+import { Prisma } from '@prisma/client';
+
+import { hashApiKey } from '../../lib/apiKey';
+import { ConflictError, NotFoundError } from '../../lib/errors';
 import { getPrisma } from '../../lib/prisma';
 
-import type { AuditLog, Room, User } from '@prisma/client';
+import type { CreatePeerIntegrationInput } from './admin.schema';
+import type { AuditLog, PeerIntegration, Room, User } from '@prisma/client';
 import type { Role } from '@prisma/client';
+
+function isUniqueConstraintError(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
+}
 
 export async function listAuditLogs(limit: number): Promise<(AuditLog & { actor: User | null })[]> {
   return getPrisma().auditLog.findMany({
@@ -102,4 +113,88 @@ export async function getSystemOverview(): Promise<SystemOverview> {
     reservations: { upcoming: upcomingReservations },
     apiKeys: apiKeys.map((k) => ({ name: k.name, lastUsedAt: k.lastUsedAt?.toISOString() ?? null })),
   };
+}
+
+export interface IssuedPeerKey {
+  name: string;
+  key: string;
+}
+
+/**
+ * Not FinderAI-specific — any partner team gets the same treatment: a
+ * 32-byte random hex key, only its SHA-256 hash stored (`ApiKey.keyHash`),
+ * the raw value returned exactly once. Reuses the endpoint FinderAI already
+ * calls (`GET /external/bookings/active-at`) — one key per named caller,
+ * same data.
+ */
+export async function issuePeerApiKey(name: string): Promise<IssuedPeerKey> {
+  const key = randomBytes(32).toString('hex');
+  const keyHash = hashApiKey(key);
+  try {
+    await getPrisma().apiKey.create({ data: { name, keyHash } });
+  } catch (err) {
+    if (isUniqueConstraintError(err)) throw new ConflictError(`A key named "${name}" already exists`);
+    throw err;
+  }
+  return { name, key };
+}
+
+export interface PeerIntegrationSummary {
+  id: string;
+  name: string;
+  baseUrl: string;
+  apiKeyMasked: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+function maskApiKey(key: string): string {
+  return key.length <= 4 ? '••••' : `••••${key.slice(-4)}`;
+}
+
+function toSummary(row: PeerIntegration): PeerIntegrationSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    baseUrl: row.baseUrl,
+    apiKeyMasked: maskApiKey(row.apiKey),
+    notes: row.notes,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+/**
+ * Bookkeeping for peer APIs we consume — not wired to a generic caller.
+ * Every partner's response shape is different, so actually calling one
+ * still means a real integration module (see src/integrations/finderai.ts);
+ * this just keeps every partner's base URL / issued key in one ADMIN-only
+ * place instead of scattered across chat history. `apiKey` is never
+ * returned in full — masked to its last 4 characters — since unlike ApiKey
+ * (where we only ever compare a hash), the raw value has to stay usable to
+ * actually call them later, so it's a real secret at rest.
+ */
+export async function listPeerIntegrations(): Promise<PeerIntegrationSummary[]> {
+  const rows = await getPrisma().peerIntegration.findMany({ orderBy: { name: 'asc' } });
+  return rows.map(toSummary);
+}
+
+export async function createPeerIntegration(input: CreatePeerIntegrationInput): Promise<PeerIntegrationSummary> {
+  try {
+    const row = await getPrisma().peerIntegration.create({ data: input });
+    return toSummary(row);
+  } catch (err) {
+    if (isUniqueConstraintError(err)) throw new ConflictError(`A peer integration named "${input.name}" already exists`);
+    throw err;
+  }
+}
+
+export async function deletePeerIntegration(id: string): Promise<void> {
+  try {
+    await getPrisma().peerIntegration.delete({ where: { id } });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+      throw new NotFoundError('Peer integration not found');
+    }
+    throw err;
+  }
 }

@@ -106,11 +106,32 @@ model AuditLog {
 }
 
 // Peer API (phase 9). Only the SHA-256 hash of the issued key is stored —
-// the raw key is shown once at generation time and never persisted.
+// the raw key is shown once at generation time and never persisted. Not
+// limited to FinderAI — an ADMIN can issue one of these to any partner team
+// from the Admin dashboard (POST /admin/peer-keys).
 model ApiKey {
   id         String    @id @default(uuid())
   name       String    @unique // e.g. "FinderAI"
   keyHash    String    @unique // SHA-256 hex digest of the raw key
   createdAt  DateTime  @default(now())
   lastUsedAt DateTime?
+}
+
+// A record of a peer team's API we consume — bookkeeping only, not wired to
+// a generic caller (every partner's contract has its own shape, so actually
+// calling one still means writing a real integration like
+// src/integrations/finderai.ts). Lets an ADMIN keep every partner's base
+// URL / issued key in one place instead of scattered across chat history.
+// The key IS the partner's raw credential (there's nothing to hash — unlike
+// ApiKey, we have to send this value back to them, not just compare it), so
+// this table is a real secret store: ADMIN-only routes, never returned to
+// non-admins, and masked to its last 4 characters in list responses.
+model PeerIntegration {
+  id        String   @id @default(uuid())
+  name      String   @unique // partner/team name, e.g. "FinderAI"
+  baseUrl   String
+  apiKey    String // the key THEY issued US to call THEM
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
