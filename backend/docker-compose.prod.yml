@@ -2,12 +2,12 @@
 # never build images (project rule). CI builds and pushes to GHCR;
 # deploy.sh only pulls and restarts.
 #
-# Single service, no postgres (docs/architecture.md): the VM is a
-# Standard B2ats v2 (1 GiB RAM) already running MySQL + WordPress + nginx +
-# the lab API — a Postgres container did not fit. Production points at Azure
-# Database for PostgreSQL Flexible Server instead; SpaceReserve-DatabaseUrl
-# in Key Vault carries that connection string (?sslmode=require). Local dev
-# still gets its own Postgres container — see docker-compose.yml.
+# Single service, no postgres (docs/architecture.md): the VM is a Standard
+# B1ms (1 GiB RAM) — too small to also run a Postgres container comfortably.
+# Production points at Azure Database for PostgreSQL Flexible Server instead;
+# SpaceReserve-DatabaseUrl in Key Vault carries that connection string
+# (?sslmode=require). Local dev still gets its own Postgres container — see
+# docker-compose.yml.
 #
 # Override IMAGE with a specific tag (e.g. the commit SHA) to deploy or roll back:
 #   IMAGE=ghcr.io/u6610909/spacereserve:<sha> docker compose -f docker-compose.prod.yml up -d

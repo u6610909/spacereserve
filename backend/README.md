@@ -7,10 +7,9 @@ Prof. Dr. Chayapol Moemeng · Section 542 · Semester 1/2026.
 > This is the graded backend. See the [repo root README](../README.md) for how it fits together
 > with [`../frontend/`](../frontend/), the React app built on top of it.
 
-> **Status:** Phases 1–11 (scaffold through tests) are implemented and tested locally. Phase 12
-> (live VPS deployment) and the demo video are pending real Azure Key Vault / AD / SendGrid /
-> Gemini / FinderAI credentials — see [Configuration & secrets](#configuration--secrets) and
-> [Deployment](#deployment).
+> **Status:** deployed and live — see [Deployment](#deployment) for the URL and stack. Everything
+> below (auth, Key Vault, search, peer API) is running against real Azure resources, not mocks,
+> except the FinderAI client (see [Peer API](#peer-api--finder-portal-finderai)).
 
 ## What it does
 
@@ -23,10 +22,9 @@ through the university's Microsoft Entra ID (AD) via OIDC, and the API then issu
 
 ```mermaid
 flowchart LR
-    Client[Client / Postman] -->|HTTPS| Nginx[Nginx + Let's Encrypt]
-    Nginx -->|"/spacereserve/ → :4000"| API[Express API]
-    Nginx -->|"/content"| WordPress
-    Nginx -->|"/api"| LabAPI["Lab CRUD API (pm2)"]
+    Client[Browser] -->|HTTPS| Nginx[Nginx + Let's Encrypt]
+    Nginx -->|"/spacereserve/api/ , /spacereserve/uploads/ → :4000"| API[Express API]
+    Nginx -->|"/spacereserve/ (everything else)"| SPA[React static build]
 
     API --> Prisma[Prisma ORM]
     Prisma --> Postgres[(PostgreSQL 16)]
@@ -39,8 +37,10 @@ flowchart LR
     FinderAI -->|"x-api-key: active-at lookup"| API
 ```
 
-Everything under `/spacereserve/` is one Express app behind one new Nginx `location` block —
-`/content` (WordPress) and `/api` (the lab CRUD API) are untouched.
+One dedicated VM, one domain, one Nginx server block: the API and the built React app share the
+same origin under `/spacereserve/`, split by location (`api/` and `uploads/` proxy to Express on
+`127.0.0.1:4000`; everything else falls through to the static build with an SPA `try_files`
+fallback). Nothing else runs on this VM.
 
 ## Tech stack
 
@@ -308,17 +308,18 @@ Partner: **Finder Portal (FinderAI)**, campus Lost & Found. Full contract in
 **Step-by-step runbook: [DEPLOY.md](DEPLOY.md)** — which Azure resources to create, which value
 goes where, first deploy, recurring deploy, rollback, verification.
 
-Target: `azureuser@20.2.140.191` (Azure VM, East Asia), domain
-`ratchanon-bad2026.eastasia.cloudapp.azure.com`, app on port 4000 (3000 is the existing lab API).
+Target: `azureuser@172.197.163.99` (Azure VM, Malaysia West — chosen because Gemini's API blocks
+requests from Hong Kong/East Asia), domain `spacereserve.malaysiawest.cloudapp.azure.com`, app on
+port 4000 (loopback-only; Nginx is the only thing that talks to it). This VM is dedicated to
+SpaceReserve — nothing else runs on it.
 
 - **One-time VM prep**: [`scripts/vm-prereqs.sh`](scripts/vm-prereqs.sh) — grows swap 1→4 GB,
-  installs Docker + the compose plugin, sets UFW to 22/80/443. Doesn't touch nginx, MySQL,
-  WordPress, or the lab API.
+  installs Docker + the compose plugin, sets UFW to 22/80/443.
 - **Images are never built on the VM** — GitHub Actions builds and pushes to
   `ghcr.io/u6610909/spacereserve` on every push to `main` ([.github/workflows/ci.yml](../.github/workflows/ci.yml)).
-- **Nginx**: paste [nginx/spacereserve.conf](nginx/spacereserve.conf) into the existing SSL
-  server block — a new `location /spacereserve/` only, `/content` and `/api` untouched. Reuse the
-  existing Let's Encrypt cert.
+- **Nginx**: one server block per port (80 redirects to 443; 443 serves both the API and the
+  static frontend build under `/spacereserve/`) — see [nginx/spacereserve.conf](nginx/spacereserve.conf).
+  Certbot manages the Let's Encrypt cert.
 - **Compose**: [docker-compose.prod.yml](docker-compose.prod.yml) runs a single `api` container
   (Postgres is Azure Database for PostgreSQL Flexible Server in prod, not a container —
   see `docs/architecture.md`), bound to `127.0.0.1:4000` only. A named volume (`room-images`) holds
@@ -333,15 +334,12 @@ Target: `azureuser@20.2.140.191` (Azure VM, East Asia), domain
 - **VPS hardening**: UFW (22/80/443 only), SSH key-only, fail2ban, unattended upgrades, non-root
   app user, swap configured.
 
-**Live URL:** not yet deployed. The pipeline is ready to run — everything above is in place; it
-just needs the Azure resources created (Key Vault + two app registrations + Azure Database for
-PostgreSQL) and their values plugged into `.env`. Until a real vault exists the app refuses to
-boot by design, which is the failure mode the demo video shows.
+**Live URL:** `https://spacereserve.malaysiawest.cloudapp.azure.com/spacereserve/`
 
 ## Contributing
 
-See **[TEAM.md](../TEAM.md)** — branch per phase, pull request into `main`, CI must pass before
-merge, and no direct commits to `main`.
+Branch per feature, open a pull request into `main`, CI must pass before merge. No direct
+commits to `main`.
 
 ## Team
 

@@ -3,10 +3,11 @@
 The code is deploy-ready. This is the checklist for the first real deploy —
 create the Azure resources, plug the values in, run two scripts.
 
-Target VM (per docs/architecture.md): `azureuser@20.2.140.191`,
-domain `ratchanon-bad2026.eastasia.cloudapp.azure.com`, app on port 4000.
-It already runs nginx + MySQL + WordPress (`/content`) + the pm2 lab API
-(`/api`) — **none of those get touched**.
+Target VM (per docs/architecture.md): `azureuser@172.197.163.99`,
+domain `spacereserve.malaysiawest.cloudapp.azure.com`, app on port 4000
+(loopback-only). Malaysia West, not East Asia — Gemini's API blocks requests
+from Hong Kong/East Asia, so the VM lives in a region it doesn't block. This
+VM is dedicated to SpaceReserve; nothing else runs on it.
 
 ---
 
@@ -15,9 +16,9 @@ It already runs nginx + MySQL + WordPress (`/content`) + the pm2 lab API
 ### 1. Azure Database for PostgreSQL — Flexible Server
 
 Not a container (the 1 GiB VM can't fit one — docs/architecture.md). Free tier
-(B1ms, 12 months) is enough.
+(B1ms, 12 months) is enough. Can live in a different region than the VM.
 
-- Firewall: allow **only** the VM's public IP `20.2.140.191`. Not `0.0.0.0/0`.
+- Firewall: allow **only** the VM's public IP `172.197.163.99`. Not `0.0.0.0/0`.
 - Create a database (e.g. `spacereserve`).
 - Build the connection string with `?sslmode=require`:
   `postgresql://<user>:<pass>@<server>.postgres.database.azure.com:5432/spacereserve?sslmode=require`
@@ -45,14 +46,13 @@ Add these secrets (Secrets → Generate/Import):
 | `SpaceReserve-JwtSecret` | any long random string (`openssl rand -hex 32`) — also signs cookies |
 | `SpaceReserve-AdClientId` | client id of the **login** app registration (step 4) |
 | `SpaceReserve-AdClientSecret` | client secret of the login app registration |
-| `SpaceReserve-GeminiApiKey` | Google AI Studio key — or a placeholder; search degrades gracefully without it |
+| `SpaceReserve-GeminiApiKey` | Google AI Studio key — real key in prod; search degrades gracefully without it |
 | `SpaceReserve-SendGridApiKey` | SendGrid key — or a placeholder; email failures are logged, bookings still succeed |
-| `SpaceReserve-FinderAIApiKey` | the key FinderAI issues us — or a placeholder until their contract lands |
+| `SpaceReserve-FinderAIApiKey` | the key FinderAI issues us — placeholder until their contract lands |
 | `SpaceReserve-PeerApiKeyHash` | SHA-256 hash of the key we issue FinderAI — `seed.ts` reads this on a fresh DB |
 
 Every secret must exist (even as a placeholder) or the app refuses to boot —
-that refusal is intentional and is what the demo video shows if a real vault
-isn't ready yet.
+that refusal is intentional.
 
 ### 4. App registration — `@au.edu` login (OIDC)
 
@@ -63,7 +63,7 @@ member users works until AU issues one — see docs/architecture.md "Settled des
 decisions").
 
 - Authentication → Add a platform → Web → Redirect URI:
-  `https://ratchanon-bad2026.eastasia.cloudapp.azure.com/spacereserve/api/v1/auth/callback`
+  `https://spacereserve.malaysiawest.cloudapp.azure.com/spacereserve/api/v1/auth/callback`
 - Certificates & secrets → New client secret.
 - API permissions → Microsoft Graph → delegated: `openid`, `profile`, `email` → Grant admin consent.
 - Put its client id / secret into Key Vault as `SpaceReserve-AdClientId` / `SpaceReserve-AdClientSecret` (step 3).
@@ -81,7 +81,7 @@ visibility → Public. Then `docker compose pull` needs no login on the VM
 ## Part B — First deploy (on the VM)
 
 ```bash
-ssh azureuser@20.2.140.191
+ssh azureuser@172.197.163.99
 
 # one-time VM prep: swap 1→4 GB, install Docker + compose, UFW 22/80/443
 cd ~/CSX4110/spacereserve   # or wherever the repo is cloned
@@ -97,18 +97,15 @@ nano .env                    # fill AZURE_TENANT_ID / CLIENT_ID / CLIENT_SECRET 
 
 ### Nginx (do this once, by hand)
 
-`backend/nginx/spacereserve.conf` is a `location` block, not a full server
-block. Paste it **inside the existing SSL `server { }` block** that already
-serves `/content` and `/api` — don't replace anything.
+`sudo apt-get install -y nginx`, then `certbot --nginx -d spacereserve.malaysiawest.cloudapp.azure.com
+--non-interactive --agree-tos -m <email> --redirect` — certbot writes the SSL
+`server { }` block and the 80→443 redirect for you. Add the `location` blocks
+from [nginx/spacereserve.conf](nginx/spacereserve.conf) (API/uploads proxy +
+static frontend `try_files`) inside the 443 server block it created.
 
 ```bash
-sudo cp /etc/nginx/sites-enabled/<file> ~/nginx-backup-$(date +%s).conf   # back up first
-sudo nano /etc/nginx/sites-enabled/<file>                                 # paste the block in
 sudo nginx -t && sudo systemctl reload nginx
 ```
-
-Reuse the existing Let's Encrypt cert — **never** `certbot --force-renewal`,
-never request a new one (`sudo certbot certificates` to check first).
 
 ---
 
@@ -131,16 +128,17 @@ IMAGE=ghcr.io/u6610909/spacereserve:<sha> ./deploy.sh
 `deploy.sh` auto-rolls-back to the previous image if the new one fails its
 health check.
 
+Frontend redeploy (separate from the backend, static files only) — see
+[../frontend/README.md](../frontend/README.md).
+
 ---
 
 ## Part D — Verify (every time — project rule)
 
 ```bash
-curl -s  https://ratchanon-bad2026.eastasia.cloudapp.azure.com/spacereserve/api/v1/health
-curl -sI https://ratchanon-bad2026.eastasia.cloudapp.azure.com/content/ | head -1
-curl -sI https://ratchanon-bad2026.eastasia.cloudapp.azure.com/api/     | head -1
+curl -s https://spacereserve.malaysiawest.cloudapp.azure.com/spacereserve/api/v1/health
+curl -s https://spacereserve.malaysiawest.cloudapp.azure.com/spacereserve/ | head -c 200
 ```
 
-All three must answer. `/health` should report `"keyVault":"ok"` once the
-vault is wired up — if it says `"down"`, the service principal or the vault
-URL is wrong.
+Both must answer. `/health` should report `"keyVault":"ok"` — if it says
+`"down"`, the service principal or the vault URL is wrong.
