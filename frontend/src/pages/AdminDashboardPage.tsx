@@ -100,12 +100,17 @@ function CodeRow({ value }: { value: string }) {
   );
 }
 
+/** Mirrors the "Base URL" field a partner would put us under in *their* own
+ * "peer integrations we consume" bookkeeping — the API root without any
+ * specific route on it, same shape as FinderAI's own base URL below. */
+const OUR_BASE_URL = `${window.location.origin}/spacereserve/api/v1`;
+
 /** Our one exposed peer capability — see docs/peer-api.md. Any partner team
  * gets this same URL, paired with a key issued to them below. Kept as a
  * clean, real URL (no bracketed placeholders baked in) so Copy hands them
  * something they can actually paste; the query params are documented
  * separately since they're per-request, not part of the endpoint itself. */
-const OUR_ENDPOINT = `${window.location.origin}/spacereserve/api/v1/external/bookings/active-at`;
+const OUR_ENDPOINT = `${OUR_BASE_URL}/external/bookings/active-at`;
 const OUR_ENDPOINT_PARAMS = 'Query params: room=<room name>, at=<ISO 8601 datetime>';
 
 function IssueKeyModal({ onClose }: { onClose: () => void }) {
@@ -225,6 +230,10 @@ function PeerApiSection() {
       </div>
 
       <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4">
+        <div>
+          <div className="mb-1 text-sm font-medium text-slate-900">Our base URL</div>
+          <CodeRow value={OUR_BASE_URL} />
+        </div>
         <div>
           <div className="mb-1 text-sm font-medium text-slate-900">Our endpoint</div>
           <CodeRow value={OUR_ENDPOINT} />
