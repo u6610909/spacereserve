@@ -17,7 +17,7 @@ import {
 } from '../hooks/useAdmin';
 import { formatDateTime } from '../lib/format';
 
-import type { RoomUtilization } from '../api/types';
+import type { ReservationSearchResult, RoomUtilization } from '../api/types';
 
 function StatTile({ value, label }: { value: string | number; label: string }) {
   return (
@@ -276,9 +276,113 @@ function UtilizationChart({ rooms }: { rooms: RoomUtilization[] }) {
   );
 }
 
+const BOOKING_ROW_COLUMN_COUNT = 6;
+
+function ChevronIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
+    >
+      <path d="M7 4l6 6-6 6" />
+    </svg>
+  );
+}
+
+function PersonLine({ name, email }: { name: string; email: string }) {
+  return (
+    <div className="text-sm">
+      <span className="font-medium text-slate-900">{name}</span>{' '}
+      <span className="text-xs text-slate-500">{email}</span>
+    </div>
+  );
+}
+
+/** Click/Enter/Space to reveal who organized vs. who was invited — collapsed
+ * by default since names+emails for every row at once would swamp the table. */
+function BookingRow({
+  r,
+  expanded,
+  onToggle,
+}: {
+  r: ReservationSearchResult;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <>
+      <tr
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+        className="cursor-pointer hover:bg-slate-50 focus:outline-none focus-visible:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
+      >
+        <td className="whitespace-nowrap px-4 py-2 font-medium text-slate-900">
+          <div className="flex items-center gap-2">
+            <ChevronIcon expanded={expanded} />
+            <span>
+              {r.roomName} {r.roomCode && <span className="text-slate-400">({r.roomCode})</span>}
+            </span>
+          </div>
+        </td>
+        <td className="whitespace-nowrap px-4 py-2 text-slate-600">{r.organizerName}</td>
+        <td className="whitespace-nowrap px-4 py-2 text-slate-600">
+          {r.attendees.length === 0 ? <span className="text-slate-400">None invited</span> : `${r.attendees.length} invited`}
+        </td>
+        <td className="whitespace-nowrap px-4 py-2 text-slate-600">{r.headcount}</td>
+        <td className="whitespace-nowrap px-4 py-2 text-slate-500">
+          {formatDateTime(r.startTime)} – {formatDateTime(r.endTime)}
+        </td>
+        <td className="whitespace-nowrap px-4 py-2 text-slate-600">{r.status}</td>
+      </tr>
+      {expanded && (
+        <tr className="bg-slate-50">
+          <td colSpan={BOOKING_ROW_COLUMN_COUNT} className="px-4 py-4">
+            <div className="grid gap-6 pl-6 sm:grid-cols-2">
+              <div>
+                <div className="mb-1.5 text-xs font-medium uppercase text-slate-500">Organizer</div>
+                <PersonLine name={r.organizerName} email={r.organizerEmail} />
+              </div>
+              <div>
+                <div className="mb-1.5 text-xs font-medium uppercase text-slate-500">
+                  Invited{r.attendees.length > 0 && ` (${r.attendees.length})`}
+                </div>
+                {r.attendees.length === 0 ? (
+                  <div className="text-sm text-slate-400">No one invited</div>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {r.attendees.map((a) => (
+                      <PersonLine key={a.email} name={a.name} email={a.email} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            {r.purpose && <div className="mt-3 pl-6 text-xs text-slate-500">Purpose: {r.purpose}</div>}
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
 function BookingsSearchSection() {
   const [q, setQ] = useState('');
   const [submittedQ, setSubmittedQ] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const search = useReservationSearch({ q: submittedQ || undefined });
 
   return (
@@ -335,7 +439,7 @@ function BookingsSearchSection() {
               <tr>
                 <th className="whitespace-nowrap px-4 py-2">Room</th>
                 <th className="whitespace-nowrap px-4 py-2">Organizer</th>
-                <th className="whitespace-nowrap px-4 py-2">Attendees</th>
+                <th className="whitespace-nowrap px-4 py-2">Invited</th>
                 <th className="whitespace-nowrap px-4 py-2">Headcount</th>
                 <th className="whitespace-nowrap px-4 py-2">When</th>
                 <th className="whitespace-nowrap px-4 py-2">Status</th>
@@ -343,24 +447,12 @@ function BookingsSearchSection() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {search.data?.reservations.map((r) => (
-                <tr key={r.id}>
-                  <td className="whitespace-nowrap px-4 py-2 font-medium text-slate-900">
-                    {r.roomName} {r.roomCode && <span className="text-slate-400">({r.roomCode})</span>}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-2 text-slate-600">{r.organizerName}</td>
-                  <td className="max-w-xs px-4 py-2 text-slate-600">
-                    {r.attendees.length === 0 ? (
-                      <span className="text-slate-400">None</span>
-                    ) : (
-                      r.attendees.map((a) => a.name).join(', ')
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-2 text-slate-600">{r.headcount}</td>
-                  <td className="whitespace-nowrap px-4 py-2 text-slate-500">
-                    {formatDateTime(r.startTime)} – {formatDateTime(r.endTime)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-2 text-slate-600">{r.status}</td>
-                </tr>
+                <BookingRow
+                  key={r.id}
+                  r={r}
+                  expanded={expandedId === r.id}
+                  onToggle={() => setExpandedId((current) => (current === r.id ? null : r.id))}
+                />
               ))}
             </tbody>
           </table>
