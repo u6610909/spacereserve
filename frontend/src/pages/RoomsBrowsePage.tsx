@@ -220,73 +220,76 @@ export function RoomsBrowsePage() {
         <ErrorBanner error={search.error} />
         <ErrorBanner error={error} />
 
-        {!searching && (
-          <div className="flex flex-col gap-3 border-t border-slate-100 pt-3">
-            <div className="flex flex-wrap items-end gap-3">
-            <Input
-              label="Min. seats"
-              placeholder="Any"
-              type="number"
-              min={1}
-              value={capacity}
-              onChange={(e) => setCapacity(e.target.value)}
-              className="w-28"
-            />
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-slate-700">Building</span>
-              <select
-                value={building}
-                onChange={(e) => setBuilding(e.target.value)}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-brand-500"
-              >
-                <option value="">All buildings</option>
-                {buildings.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-slate-700">Availability overview for</span>
-              <input
-                type="date"
-                value={overviewDate}
-                min={todayBangkok()}
-                max={maxBookableDateBangkok(14)}
-                onChange={(e) => setOverviewDate(e.target.value)}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+        <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
+          {!searching && (
+            <>
+              <Input
+                label="Min. seats"
+                placeholder="Any"
+                type="number"
+                min={1}
+                value={capacity}
+                onChange={(e) => setCapacity(e.target.value)}
+                className="w-28"
               />
-            </label>
-            {hasFilters && (
-              <button type="button" onClick={clearFilters} className="pb-2 text-sm text-brand-600 hover:underline">
-                Clear filters
-              </button>
-            )}
-          </div>
-          {amenityOptions.length > 0 && (
-            <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-              {amenityOptions.map((a) => {
-                const on = activeAmenities.includes(a);
-                return (
-                  <button
-                    key={a}
-                    type="button"
-                    onClick={() => toggleAmenity(a)}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
-                      on
-                        ? 'border-brand-300 bg-brand-50 text-brand-700'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                    }`}
-                  >
-                    <AmenityIcon amenity={a} className="h-3.5 w-3.5" />
-                    {amenityLabel(a)}
-                  </button>
-                );
-              })}
-            </div>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium text-slate-700">Building</span>
+                <select
+                  value={building}
+                  onChange={(e) => setBuilding(e.target.value)}
+                  className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-brand-500"
+                >
+                  <option value="">All buildings</option>
+                  {buildings.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+          {/* Always visible, even mid-search — it drives each card's
+              busy-hours overview regardless of how the list was filtered. */}
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-slate-700">Availability overview for</span>
+            <input
+              type="date"
+              value={overviewDate}
+              min={todayBangkok()}
+              max={maxBookableDateBangkok(14)}
+              onChange={(e) => setOverviewDate(e.target.value)}
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            />
+          </label>
+          {!searching && hasFilters && (
+            <button type="button" onClick={clearFilters} className="pb-2 text-sm text-brand-600 hover:underline">
+              Clear filters
+            </button>
           )}
         </div>
+
+        {!searching && amenityOptions.length > 0 && (
+          <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+            {amenityOptions.map((a) => {
+              const on = activeAmenities.includes(a);
+              return (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => toggleAmenity(a)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                    on
+                      ? 'border-brand-300 bg-brand-50 text-brand-700'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  <AmenityIcon amenity={a} className="h-3.5 w-3.5" />
+                  {amenityLabel(a)}
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
 
