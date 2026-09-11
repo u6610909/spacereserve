@@ -128,3 +128,90 @@ describe('rooms filtering', () => {
     expect(names).not.toContain('Booked');
   });
 });
+
+describe('GET /rooms/availability', () => {
+  it('groups busy intervals by room for the given Bangkok calendar date', async () => {
+    const token = await tokenFor('STUDENT');
+    const busyRoom = await getPrisma().room.create({ data: { name: 'Busy Today', building: 'B', capacity: 4 } });
+    const freeRoom = await getPrisma().room.create({ data: { name: 'Free Today', building: 'B', capacity: 4 } });
+    const organizer = await getPrisma().user.create({
+      data: { adObjectId: 'avail-organizer', email: 'avail@rooms.test', name: 'Avail Organizer' },
+    });
+
+    // 10:00-11:00 Bangkok on 2026-06-15 = 03:00-04:00 UTC.
+    await getPrisma().reservation.create({
+      data: {
+        roomId: busyRoom.id,
+        organizerId: organizer.id,
+        startTime: new Date('2026-06-15T03:00:00.000Z'),
+        endTime: new Date('2026-06-15T04:00:00.000Z'),
+      },
+    });
+
+    const res = await request(app)
+      .get(`${config.basePath}/rooms/availability?date=2026-06-15`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as { date: string; rooms: { roomId: string; busy: { startTime: string; endTime: string }[] }[] };
+    expect(body.date).toBe('2026-06-15');
+    const busyEntry = body.rooms.find((r) => r.roomId === busyRoom.id);
+    expect(busyEntry?.busy).toEqual([
+      { startTime: '2026-06-15T03:00:00.000Z', endTime: '2026-06-15T04:00:00.000Z' },
+    ]);
+    expect(body.rooms.find((r) => r.roomId === freeRoom.id)).toBeUndefined();
+  });
+
+  it('rejects a malformed date', async () => {
+    const token = await tokenFor('STUDENT');
+    const res = await request(app)
+      .get(`${config.basePath}/rooms/availability?date=not-a-date`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('GET /rooms/:id/schedule', () => {
+  it('lists that room\'s bookings for the day with organizer + attendee names, no email', async () => {
+    const token = await tokenFor('STUDENT');
+    const room = await getPrisma().room.create({ data: { name: 'Schedule Room', building: 'B', capacity: 4 } });
+    const organizer = await getPrisma().user.create({
+      data: { adObjectId: 'sched-organizer', email: 'sched-organizer@rooms.test', name: 'Sched Organizer' },
+    });
+    const attendee = await getPrisma().user.create({
+      data: { adObjectId: 'sched-attendee', email: 'sched-attendee@rooms.test', name: 'Sched Attendee' },
+    });
+    const reservation = await getPrisma().reservation.create({
+      data: {
+        roomId: room.id,
+        organizerId: organizer.id,
+        startTime: new Date('2026-06-15T03:00:00.000Z'),
+        endTime: new Date('2026-06-15T04:00:00.000Z'),
+      },
+    });
+    await getPrisma().reservationAttendee.create({ data: { reservationId: reservation.id, userId: attendee.id } });
+
+    const res = await request(app)
+      .get(`${config.basePath}/rooms/${room.id}/schedule?date=2026-06-15`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const body = res.body as { date: string; bookings: { organizerName: string; attendeeNames: string[] }[] };
+    expect(body.date).toBe('2026-06-15');
+    expect(body.bookings).toEqual([{
+      startTime: '2026-06-15T03:00:00.000Z',
+      endTime: '2026-06-15T04:00:00.000Z',
+      organizerName: 'Sched Organizer',
+      attendeeNames: ['Sched Attendee'],
+    }]);
+    expect(JSON.stringify(res.body)).not.toContain('@rooms.test');
+  });
+
+  it('404s for a room that does not exist', async () => {
+    const token = await tokenFor('STUDENT');
+    const res = await request(app)
+      .get(`${config.basePath}/rooms/00000000-0000-0000-0000-000000000000/schedule`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(404);
+  });
+});

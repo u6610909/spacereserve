@@ -5,10 +5,11 @@ import { requireAuth } from '../../middleware/requireAuth';
 import { requireRole } from '../../middleware/requireRole';
 import { validate } from '../../middleware/validate';
 
-import { create, getById, list, remove, removeImage, setImage, setStatus, update } from './rooms.controller';
+import { availability, create, getById, list, remove, removeImage, schedule, setImage, setStatus, update } from './rooms.controller';
 import {
   createRoomSchema,
   listRoomsQuerySchema,
+  roomDateQuerySchema,
   roomIdParamSchema,
   roomStatusSchema,
   updateRoomSchema,
@@ -20,7 +21,18 @@ export const roomsRoutes = Router();
 const staffOrAdmin = requireRole(Role.STAFF, Role.ADMIN);
 
 roomsRoutes.get('/', requireAuth, validate({ query: listRoomsQuerySchema }), list);
+
+// Registered before '/:id' — otherwise Express would match "availability"
+// as a room id.
+roomsRoutes.get('/availability', requireAuth, validate({ query: roomDateQuerySchema }), availability);
+
 roomsRoutes.get('/:id', requireAuth, validate({ params: roomIdParamSchema }), getById);
+roomsRoutes.get(
+  '/:id/schedule',
+  requireAuth,
+  validate({ params: roomIdParamSchema, query: roomDateQuerySchema }),
+  schedule,
+);
 roomsRoutes.post('/', requireAuth, staffOrAdmin, validate({ body: createRoomSchema }), create);
 roomsRoutes.patch(
   '/:id',

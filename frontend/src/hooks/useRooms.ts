@@ -19,6 +19,21 @@ export function useRoom(id: string | undefined) {
   });
 }
 
+export function useRoomsAvailability(date: string) {
+  return useQuery({
+    queryKey: ['rooms', 'availability', date],
+    queryFn: () => roomsApi.roomsAvailability(date),
+  });
+}
+
+export function useRoomSchedule(roomId: string | undefined, date: string) {
+  return useQuery({
+    queryKey: ['rooms', roomId, 'schedule', date],
+    queryFn: () => roomsApi.roomSchedule(roomId!, date),
+    enabled: Boolean(roomId),
+  });
+}
+
 function useInvalidateRooms() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: ['rooms'] });

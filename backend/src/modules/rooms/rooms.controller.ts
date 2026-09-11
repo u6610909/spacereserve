@@ -79,3 +79,23 @@ export const removeImage: RequestHandler = async (req, res, next) => {
     next(err);
   }
 };
+
+export const availability: RequestHandler = async (req, res, next) => {
+  try {
+    const { date } = req.query as { date?: string };
+    const result = await roomsService.getRoomsAvailability(date);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const schedule: RequestHandler = async (req, res, next) => {
+  try {
+    const { date } = req.query as { date?: string };
+    const result = await roomsService.getRoomSchedule(req.params.id as string, date);
+    res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};

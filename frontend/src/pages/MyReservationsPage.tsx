@@ -91,7 +91,7 @@ function ReservationCard({ reservation }: { reservation: Reservation }) {
                 type="button"
                 aria-label="Remove attendee"
                 onClick={() => removeAttendee.mutate({ id: reservation.id, userId: a.userId })}
-                className="text-slate-400 hover:text-red-600"
+                className="-mr-0.5 rounded-full p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3">
                   <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
