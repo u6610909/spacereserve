@@ -219,18 +219,6 @@ export function RoomsBrowsePage() {
       <ErrorBanner error={search.error} />
       <ErrorBanner error={error} />
 
-      <label className="flex w-fit items-center gap-2 text-sm">
-        <span className="font-medium text-slate-700">Availability overview for</span>
-        <input
-          type="date"
-          value={overviewDate}
-          min={todayBangkok()}
-          max={maxBookableDateBangkok(14)}
-          onChange={(e) => setOverviewDate(e.target.value)}
-          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-        />
-      </label>
-
       {!searching && (
         <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
           <div className="flex flex-wrap items-end gap-3">
@@ -257,6 +245,17 @@ export function RoomsBrowsePage() {
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-slate-700">Availability overview for</span>
+              <input
+                type="date"
+                value={overviewDate}
+                min={todayBangkok()}
+                max={maxBookableDateBangkok(14)}
+                onChange={(e) => setOverviewDate(e.target.value)}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              />
             </label>
             {hasFilters && (
               <button type="button" onClick={clearFilters} className="pb-2 text-sm text-brand-600 hover:underline">
