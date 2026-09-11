@@ -45,6 +45,7 @@ model User {
 
 model Room {
   id        String     @id @default(uuid())
+  code      String?    @unique // short room number/label (e.g. "CL-2-04"), distinct from the display name
   name      String     @unique
   building  String
   capacity  Int

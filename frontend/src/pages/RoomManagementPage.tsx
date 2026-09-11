@@ -65,13 +65,14 @@ function RoomImageUploader({ room }: { room: Room }) {
 }
 
 interface RoomFormState {
+  code: string;
   name: string;
   building: string;
   capacity: string;
   amenities: string;
 }
 
-const EMPTY_FORM: RoomFormState = { name: '', building: '', capacity: '', amenities: '' };
+const EMPTY_FORM: RoomFormState = { code: '', name: '', building: '', capacity: '', amenities: '' };
 
 function RoomForm({
   initial,
@@ -96,6 +97,12 @@ function RoomForm({
       }}
       className="flex flex-col gap-3"
     >
+      <Input
+        label="Code"
+        placeholder="e.g. CL204 — the short room number, separate from the name"
+        value={form.code}
+        onChange={(e) => setForm({ ...form, code: e.target.value })}
+      />
       <Input label="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
       <Input
         label="Building"
@@ -187,7 +194,10 @@ function BuildingSection({
                 <td className="px-4 py-2">
                   <RoomImage src={room.imageUrl} alt={room.name} className="w-14" />
                 </td>
-                <td className="px-4 py-2 font-medium text-slate-900">{room.name}</td>
+                <td className="px-4 py-2">
+                  <div className="font-medium text-slate-900">{room.name}</div>
+                  {room.code && <div className="font-mono text-xs text-slate-400">{room.code}</div>}
+                </td>
                 <td className="px-4 py-2 text-slate-600">{room.capacity}</td>
                 <td className="px-4 py-2">
                   <Badge tone={room.status === 'AVAILABLE' ? 'green' : 'red'}>
@@ -251,6 +261,7 @@ export function RoomManagementPage() {
 
   function toRoomInput(form: RoomFormState) {
     return {
+      code: form.code.trim() || undefined,
       name: form.name,
       building: form.building,
       capacity: Number(form.capacity),
@@ -342,6 +353,7 @@ export function RoomManagementPage() {
             <RoomImageUploader room={editing} />
             <RoomForm
               initial={{
+                code: editing.code ?? '',
                 name: editing.name,
                 building: editing.building,
                 capacity: String(editing.capacity),

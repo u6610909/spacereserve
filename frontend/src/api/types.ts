@@ -11,6 +11,7 @@ export interface User {
 
 export interface Room {
   id: string;
+  code: string | null;
   name: string;
   building: string;
   capacity: number;

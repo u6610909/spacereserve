@@ -21,6 +21,7 @@ import { hashApiKey } from '../src/lib/apiKey';
 const prisma = new PrismaClient();
 
 interface RoomSeed {
+  code: string;
   name: string;
   building: string;
   capacity: number;
@@ -28,56 +29,58 @@ interface RoomSeed {
   status?: RoomStatus;
 }
 
-// Seven real buildings on the AU Suvarnabhumi campus. Room codes follow each
-// building's own convention (floor-room, lab number, practice-room number).
+// Seven real buildings on the AU Suvarnabhumi campus. `code` is the short
+// room number staff/signage would actually use; `name` stays the friendlier
+// display label shown in the UI — the two are deliberately separate fields
+// (see docs/architecture.md) so a room can be looked up by either.
 const ROOMS: RoomSeed[] = [
   // --- Cathedral of Learning — the main academic tower -------------------
-  { name: 'CL-2-04', building: 'Cathedral of Learning', capacity: 40, amenities: ['projector', 'whiteboard', 'wifi', 'movable-seating'] },
-  { name: 'CL-2-05', building: 'Cathedral of Learning', capacity: 40, amenities: ['projector', 'whiteboard', 'wifi', 'movable-seating'] },
-  { name: 'CL-3-01', building: 'Cathedral of Learning', capacity: 24, amenities: ['tv-display', 'whiteboard', 'wifi'] },
-  { name: 'CL-3-02', building: 'Cathedral of Learning', capacity: 24, amenities: ['tv-display', 'whiteboard', 'wifi'] },
-  { name: 'CL-4-10 Lecture Theatre', building: 'Cathedral of Learning', capacity: 180, amenities: ['projector', 'podium', 'microphone', 'sound-system', 'wifi'] },
-  { name: 'CL-5-Boardroom', building: 'Cathedral of Learning', capacity: 14, amenities: ['video-conf', 'tv-display', 'whiteboard', 'wifi'] },
+  { code: 'CL204', name: 'CL-2-04', building: 'Cathedral of Learning', capacity: 40, amenities: ['projector', 'whiteboard', 'wifi', 'movable-seating'] },
+  { code: 'CL205', name: 'CL-2-05', building: 'Cathedral of Learning', capacity: 40, amenities: ['projector', 'whiteboard', 'wifi', 'movable-seating'] },
+  { code: 'CL301', name: 'CL-3-01', building: 'Cathedral of Learning', capacity: 24, amenities: ['tv-display', 'whiteboard', 'wifi'] },
+  { code: 'CL302', name: 'CL-3-02', building: 'Cathedral of Learning', capacity: 24, amenities: ['tv-display', 'whiteboard', 'wifi'] },
+  { code: 'CL410', name: 'CL-4-10 Lecture Theatre', building: 'Cathedral of Learning', capacity: 180, amenities: ['projector', 'podium', 'microphone', 'sound-system', 'wifi'] },
+  { code: 'CL5B', name: 'CL-5-Boardroom', building: 'Cathedral of Learning', capacity: 14, amenities: ['video-conf', 'tv-display', 'whiteboard', 'wifi'] },
 
   // --- Srisakdi Charmonman IT Building — computer labs ------------------
-  { name: 'SC-LAB-1', building: 'Srisakdi Charmonman IT Building', capacity: 30, amenities: ['projector', 'dual-monitor', 'wifi'] },
-  { name: 'SC-LAB-2', building: 'Srisakdi Charmonman IT Building', capacity: 30, amenities: ['projector', 'dual-monitor', 'wifi'] },
-  { name: 'SC-LAB-3 (Networking)', building: 'Srisakdi Charmonman IT Building', capacity: 24, amenities: ['projector', 'dual-monitor', 'whiteboard', 'wifi'], status: RoomStatus.OUT_OF_ORDER },
-  { name: 'SC-4-02 Seminar', building: 'Srisakdi Charmonman IT Building', capacity: 20, amenities: ['tv-display', 'whiteboard', 'wifi'] },
-  { name: 'SC-4-03 Seminar', building: 'Srisakdi Charmonman IT Building', capacity: 20, amenities: ['tv-display', 'whiteboard', 'wifi'] },
+  { code: 'SCLAB1', name: 'SC-LAB-1', building: 'Srisakdi Charmonman IT Building', capacity: 30, amenities: ['projector', 'dual-monitor', 'wifi'] },
+  { code: 'SCLAB2', name: 'SC-LAB-2', building: 'Srisakdi Charmonman IT Building', capacity: 30, amenities: ['projector', 'dual-monitor', 'wifi'] },
+  { code: 'SCLAB3', name: 'SC-LAB-3 (Networking)', building: 'Srisakdi Charmonman IT Building', capacity: 24, amenities: ['projector', 'dual-monitor', 'whiteboard', 'wifi'], status: RoomStatus.OUT_OF_ORDER },
+  { code: 'SC402', name: 'SC-4-02 Seminar', building: 'Srisakdi Charmonman IT Building', capacity: 20, amenities: ['tv-display', 'whiteboard', 'wifi'] },
+  { code: 'SC403', name: 'SC-4-03 Seminar', building: 'Srisakdi Charmonman IT Building', capacity: 20, amenities: ['tv-display', 'whiteboard', 'wifi'] },
 
   // --- de Montfort Building — general classrooms ----------------------
-  { name: 'MT-1-08', building: 'de Montfort Building', capacity: 45, amenities: ['projector', 'whiteboard', 'wifi'] },
-  { name: 'MT-1-09', building: 'de Montfort Building', capacity: 45, amenities: ['projector', 'whiteboard', 'wifi'] },
-  { name: 'MT-2-02', building: 'de Montfort Building', capacity: 30, amenities: ['whiteboard', 'wifi', 'natural-light'] },
-  { name: 'MT-2-03', building: 'de Montfort Building', capacity: 30, amenities: ['whiteboard', 'wifi', 'natural-light'] },
+  { code: 'MT108', name: 'MT-1-08', building: 'de Montfort Building', capacity: 45, amenities: ['projector', 'whiteboard', 'wifi'] },
+  { code: 'MT109', name: 'MT-1-09', building: 'de Montfort Building', capacity: 45, amenities: ['projector', 'whiteboard', 'wifi'] },
+  { code: 'MT202', name: 'MT-2-02', building: 'de Montfort Building', capacity: 30, amenities: ['whiteboard', 'wifi', 'natural-light'] },
+  { code: 'MT203', name: 'MT-2-03', building: 'de Montfort Building', capacity: 30, amenities: ['whiteboard', 'wifi', 'natural-light'] },
 
   // --- John XXIII Conference Center ---------------------------------
-  { name: 'JC Conference Hall A', building: 'John XXIII Conference Center', capacity: 300, amenities: ['projector', 'podium', 'microphone', 'sound-system', 'video-conf', 'wifi'] },
-  { name: 'JC Meeting Room 1', building: 'John XXIII Conference Center', capacity: 12, amenities: ['video-conf', 'tv-display', 'whiteboard', 'wifi'] },
-  { name: 'JC Meeting Room 2', building: 'John XXIII Conference Center', capacity: 12, amenities: ['video-conf', 'tv-display', 'whiteboard', 'wifi'] },
-  { name: 'JC Meeting Room 3', building: 'John XXIII Conference Center', capacity: 8, amenities: ['tv-display', 'whiteboard', 'wifi'] },
+  { code: 'JCHALLA', name: 'JC Conference Hall A', building: 'John XXIII Conference Center', capacity: 300, amenities: ['projector', 'podium', 'microphone', 'sound-system', 'video-conf', 'wifi'] },
+  { code: 'JCM1', name: 'JC Meeting Room 1', building: 'John XXIII Conference Center', capacity: 12, amenities: ['video-conf', 'tv-display', 'whiteboard', 'wifi'] },
+  { code: 'JCM2', name: 'JC Meeting Room 2', building: 'John XXIII Conference Center', capacity: 12, amenities: ['video-conf', 'tv-display', 'whiteboard', 'wifi'] },
+  { code: 'JCM3', name: 'JC Meeting Room 3', building: 'John XXIII Conference Center', capacity: 8, amenities: ['tv-display', 'whiteboard', 'wifi'] },
 
   // --- Albert Laurence School of Communication Arts ---------------
-  { name: 'CA Screening Room', building: 'Albert Laurence CommArts Building', capacity: 60, amenities: ['projector', 'sound-system', 'wifi'] },
-  { name: 'CA Studio 1', building: 'Albert Laurence CommArts Building', capacity: 20, amenities: ['sound-system', 'microphone', 'wifi'] },
-  { name: 'CA Edit Suite 2', building: 'Albert Laurence CommArts Building', capacity: 6, amenities: ['dual-monitor', 'wifi'] },
-  { name: 'CA Edit Suite 3', building: 'Albert Laurence CommArts Building', capacity: 6, amenities: ['dual-monitor', 'wifi'], status: RoomStatus.OUT_OF_ORDER },
+  { code: 'CASCR', name: 'CA Screening Room', building: 'Albert Laurence CommArts Building', capacity: 60, amenities: ['projector', 'sound-system', 'wifi'] },
+  { code: 'CAST1', name: 'CA Studio 1', building: 'Albert Laurence CommArts Building', capacity: 20, amenities: ['sound-system', 'microphone', 'wifi'] },
+  { code: 'CAES2', name: 'CA Edit Suite 2', building: 'Albert Laurence CommArts Building', capacity: 6, amenities: ['dual-monitor', 'wifi'] },
+  { code: 'CAES3', name: 'CA Edit Suite 3', building: 'Albert Laurence CommArts Building', capacity: 6, amenities: ['dual-monitor', 'wifi'], status: RoomStatus.OUT_OF_ORDER },
 
   // --- Music Building --------------------------------------------
-  { name: 'MB Recital Hall', building: 'Music Building', capacity: 120, amenities: ['piano', 'sound-system', 'microphone', 'podium', 'wifi'] },
-  { name: 'MB Ensemble Room', building: 'Music Building', capacity: 25, amenities: ['piano', 'drums', 'keyboard', 'sound-system', 'wifi'] },
-  { name: 'MB Practice Room P1', building: 'Music Building', capacity: 3, amenities: ['piano'] },
-  { name: 'MB Practice Room P2', building: 'Music Building', capacity: 3, amenities: ['piano'] },
-  { name: 'MB Practice Room P3', building: 'Music Building', capacity: 4, amenities: ['keyboard', 'drums'] },
-  { name: 'MB Practice Room P4', building: 'Music Building', capacity: 4, amenities: ['keyboard', 'microphone'] },
-  { name: 'MB Practice Room P5', building: 'Music Building', capacity: 2, amenities: ['piano'], status: RoomStatus.OUT_OF_ORDER },
+  { code: 'MBHALL', name: 'MB Recital Hall', building: 'Music Building', capacity: 120, amenities: ['piano', 'sound-system', 'microphone', 'podium', 'wifi'] },
+  { code: 'MBENS', name: 'MB Ensemble Room', building: 'Music Building', capacity: 25, amenities: ['piano', 'drums', 'keyboard', 'sound-system', 'wifi'] },
+  { code: 'MBP1', name: 'MB Practice Room P1', building: 'Music Building', capacity: 3, amenities: ['piano'] },
+  { code: 'MBP2', name: 'MB Practice Room P2', building: 'Music Building', capacity: 3, amenities: ['piano'] },
+  { code: 'MBP3', name: 'MB Practice Room P3', building: 'Music Building', capacity: 4, amenities: ['keyboard', 'drums'] },
+  { code: 'MBP4', name: 'MB Practice Room P4', building: 'Music Building', capacity: 4, amenities: ['keyboard', 'microphone'] },
+  { code: 'MBP5', name: 'MB Practice Room P5', building: 'Music Building', capacity: 2, amenities: ['piano'], status: RoomStatus.OUT_OF_ORDER },
 
   // --- Library — bookable group study pods -----------------------
-  { name: 'LB Study Pod 1', building: 'Cathedral of Learning Library', capacity: 4, amenities: ['tv-display', 'whiteboard', 'wifi'] },
-  { name: 'LB Study Pod 2', building: 'Cathedral of Learning Library', capacity: 4, amenities: ['tv-display', 'whiteboard', 'wifi'] },
-  { name: 'LB Study Pod 3', building: 'Cathedral of Learning Library', capacity: 6, amenities: ['tv-display', 'whiteboard', 'wifi'] },
-  { name: 'LB Study Pod 4', building: 'Cathedral of Learning Library', capacity: 6, amenities: ['whiteboard', 'wifi', 'natural-light'] },
+  { code: 'LBP1', name: 'LB Study Pod 1', building: 'Cathedral of Learning Library', capacity: 4, amenities: ['tv-display', 'whiteboard', 'wifi'] },
+  { code: 'LBP2', name: 'LB Study Pod 2', building: 'Cathedral of Learning Library', capacity: 4, amenities: ['tv-display', 'whiteboard', 'wifi'] },
+  { code: 'LBP3', name: 'LB Study Pod 3', building: 'Cathedral of Learning Library', capacity: 6, amenities: ['tv-display', 'whiteboard', 'wifi'] },
+  { code: 'LBP4', name: 'LB Study Pod 4', building: 'Cathedral of Learning Library', capacity: 6, amenities: ['whiteboard', 'wifi', 'natural-light'] },
 ];
 
 async function main(): Promise<void> {
