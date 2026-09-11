@@ -59,31 +59,63 @@ Implementation: [src/modules/external/](../src/modules/external/), guarded by
 **Purpose:** on check-in (`POST /reservations/:id/check-in`), we ask FinderAI whether any lost
 items have been reported near the room recently, so the organizer sees a heads-up immediately.
 
+**Contract received from FinderAI 12 Sep:**
+
 ```
-GET <FinderAI base URL>/api/v1/items/by-location?location=<room>&since=<ISO datetime>
-x-api-key: <key FinderAI issues to us>
+GET https://thanadon-bad2026.koreacentral.cloudapp.azure.com/project/api/items/by-location?location=<room name>&since=<ISO 8601, optional>
+x-api-key: <key FinderAI issued us>
 ```
 
-Authenticated with `SpaceReserve-FinderAIApiKey` from Key Vault (`FINDERAI_API_KEY` in dev).
+- `location` — a free-text room/location name (their example: `CL Lounge 2nd Floor`), URL-encoded.
+  We pass `reservation.room.name`, not our internal room id.
+- `since` — optional ISO 8601 datetime; we always send `now - 24h` so a busy room's whole history
+  doesn't bury a recent find.
 
-**Status:** FinderAI's real request/response shape isn't finalized yet (target: contract
-frozen 28 Aug, keys exchanged 4 Sep, joint end-to-end test 16 Sep) —
-we were told not to invent their field names ahead of that. `backend/src/integrations/finderai.ts`
-defines a `FinderAiClient` interface and ships a mock implementation (`MockFinderAiClient`, always
-returns `[]`) with the resilience behavior already built and tested:
+**Their response:**
+
+```json
+{
+  "success": true,
+  "location": "CL Lounge 2nd Floor",
+  "items": [
+    {
+      "id": "c7b2a9e1-8842-4f30-b3e1-9214a1c50012",
+      "title": "Black Leather Wallet",
+      "description": "Found a black leather wallet containing student card and cash near the couch.",
+      "category": "Wallets & Bags",
+      "location": "CL Lounge 2nd Floor",
+      "createdAt": "2026-08-13T09:30:00.000Z"
+    }
+  ]
+}
+```
+
+`LostItemNotice` in `backend/src/integrations/finderai.ts` mirrors these field names exactly
+(`id`/`title`/`description`/`category`/`location`/`createdAt`) — no invented shape.
+
+Authenticated with `SpaceReserve-FinderAIApiKey` from Key Vault (`FINDERAI_API_KEY` in dev); the
+base URL is `FINDERAI_BASE_URL` (non-secret, their own public domain).
+
+**Resilience, unchanged by the real client landing:**
 
 - 3-second timeout per call
-- 60-second cache per `(room, timestamp)` key
+- 60-second cache per room name
 - Circuit breaker: opens for 60s after 3 consecutive failures
-- On any failure/timeout/open circuit: check-in still succeeds, with `lostItemNotice: null`
+- On any failure/timeout/open circuit/`success: false`: check-in still succeeds, with
+  `lostItemNotice: null`
+- Falls back to `MockFinderAiClient` (always `[]`) when either `FINDERAI_API_KEY` or
+  `FINDERAI_BASE_URL` is unset — same "degrade before real credentials exist" pattern as
+  Gemini/ACS.
 
-Swapping in the real client is implementing `FinderAiClient` against their actual schema —
-nothing that calls `lookupLostItems()` needs to change.
+## Key exchange — done, 12 Sep
 
-## Key exchange
+Each side generated a key for the other (`openssl rand -hex 32`), shared it over a private
+channel (not committed, not logged), and stores only its SHA-256 hash.
 
-Each side generates a key for the other (`openssl rand -hex 32` or equivalent), shares it over a
-private channel (not committed, not logged), and stores only its SHA-256 hash. `seed.ts` inserts
-FinderAI's row from `PEER_API_KEY_HASH` (mirrors `SpaceReserve-PeerApiKeyHash` in Key Vault) on a
-fresh database; if that env var is unset it generates and prints a one-time dev key instead so
-local development still works before the real exchange happens.
+- **Their key, for us calling them:** in Key Vault as `SpaceReserve-FinderAIApiKey`
+  (`FINDERAI_API_KEY` in dev).
+- **Our key, for them calling us:** `seed.ts` inserts FinderAI's `ApiKey` row from
+  `PEER_API_KEY_HASH` (mirrors `SpaceReserve-PeerApiKeyHash` in Key Vault) on a fresh database —
+  the live row is set directly rather than by re-seeding prod, since re-seeding also wipes and
+  regenerates the room inventory. If `PEER_API_KEY_HASH` is unset, `seed.ts` generates and prints
+  a one-time dev key instead, so local development still works without the real one.

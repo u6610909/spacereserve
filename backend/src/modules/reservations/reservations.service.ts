@@ -239,7 +239,7 @@ export interface CheckInResult {
  * only" rule governs *creation*, not check-in (Settled design decisions).
  */
 export async function checkIn(actorId: string, id: string): Promise<CheckInResult> {
-  const reservation = await getPrisma().reservation.findUnique({ where: { id } });
+  const reservation = await getPrisma().reservation.findUnique({ where: { id }, include: { room: true } });
   if (!reservation) throw new NotFoundError('Reservation not found');
   if (reservation.organizerId !== actorId) throw new ForbiddenError('Only the organizer can check in');
   if (reservation.status !== 'CONFIRMED') throw new ConflictError('Reservation is not active');
@@ -250,6 +250,8 @@ export async function checkIn(actorId: string, id: string): Promise<CheckInResul
     throw new ConflictError('Check-in window is 15 minutes before start until the reservation ends');
   }
 
-  const lostItemNotice = await lookupLostItems(reservation.roomId, now);
+  // FinderAI's `location` param is their free-text room name, not our internal
+  // id — see docs/peer-api.md.
+  const lostItemNotice = await lookupLostItems(reservation.room.name);
   return { reservation, lostItemNotice };
 }

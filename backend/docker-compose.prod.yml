@@ -45,6 +45,10 @@ services:
       # pass-through proxy in a supported location. Blank -> SDK default host
       # (fine anywhere not on Google's blocklist).
       GEMINI_BASE_URL: ${GEMINI_BASE_URL:-}
+      # FinderAI's live base URL — not a secret (their own domain). The API
+      # key we call it with is a secret and comes from Key Vault
+      # (SpaceReserve-FinderAIApiKey).
+      FINDERAI_BASE_URL: ${FINDERAI_BASE_URL:-}
       # TESTING ONLY — keeps POST /auth/dev-login reachable in production for
       # the frontend's per-role quick-login. Unset it (or "false") before the
       # graded submission / demo recording.

@@ -160,7 +160,7 @@ is deliberately not gated by "future only", which governs creation, not check-in
 FinderAI for lost items reported near the room:
 
 ```json
-{ "reservation": {...}, "lostItemNotice": null }
+{ "reservation": {...}, "lostItemNotice": [{ "id": "...", "title": "...", "description": "...", "category": "...", "location": "...", "createdAt": "..." }] }
 ```
 `lostItemNotice` is `null` when FinderAI is unreachable/unconfigured, `[]` when reachable with
 nothing found, or an array of items otherwise.
