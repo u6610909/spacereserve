@@ -21,3 +21,12 @@ export const utilization: RequestHandler = async (_req, res, next) => {
     next(err);
   }
 };
+
+export const overview: RequestHandler = async (_req, res, next) => {
+  try {
+    const stats = await adminService.getSystemOverview();
+    res.status(200).json(stats);
+  } catch (err) {
+    next(err);
+  }
+};

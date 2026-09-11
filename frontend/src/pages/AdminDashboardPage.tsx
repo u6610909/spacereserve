@@ -1,8 +1,19 @@
 import { ErrorBanner } from '../components/ui/ErrorBanner';
 import { Spinner } from '../components/ui/Spinner';
-import { useAuditLogs, useUtilization } from '../hooks/useAdmin';
+import { useAuditLogs, useSystemOverview, useUtilization } from '../hooks/useAdmin';
+import { formatDateTime } from '../lib/format';
+
+function StatTile({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="text-2xl font-semibold text-slate-900">{value}</div>
+      <div className="text-xs text-slate-500">{label}</div>
+    </div>
+  );
+}
 
 export function AdminDashboardPage() {
+  const overview = useSystemOverview();
   const audit = useAuditLogs(50);
   const utilization = useUtilization();
 
@@ -10,8 +21,48 @@ export function AdminDashboardPage() {
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="font-display text-3xl font-semibold text-slate-900">Admin dashboard</h1>
-        <p className="text-sm text-slate-500">Audit trail and room utilization.</p>
+        <p className="text-sm text-slate-500">System health, audit trail, and room utilization.</p>
       </div>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-slate-900">System</h2>
+        <ErrorBanner error={overview.error} />
+        {overview.isLoading ? (
+          <Spinner />
+        ) : overview.data ? (
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-3 gap-3">
+              <StatTile value={overview.data.usersByRole.STUDENT} label="Students" />
+              <StatTile value={overview.data.usersByRole.STAFF} label="Staff" />
+              <StatTile value={overview.data.usersByRole.ADMIN} label="Admins" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <StatTile value={overview.data.rooms.available} label="Rooms available" />
+              <StatTile value={overview.data.rooms.outOfOrder} label="Rooms out of order" />
+              <StatTile value={overview.data.reservations.upcoming} label="Upcoming reservations" />
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white">
+              <div className="border-b border-slate-100 px-4 py-2 text-xs font-medium uppercase text-slate-500">
+                Peer API keys
+              </div>
+              {overview.data.apiKeys.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-slate-500">None issued yet.</div>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {overview.data.apiKeys.map((key) => (
+                    <li key={key.name} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                      <span className="font-medium text-slate-900">{key.name}</span>
+                      <span className="text-slate-500">
+                        {key.lastUsedAt ? `Last used ${formatDateTime(key.lastUsedAt)}` : 'Never used'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-slate-900">Utilization</h2>
@@ -21,22 +72,9 @@ export function AdminDashboardPage() {
         ) : utilization.data ? (
           <>
             <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <div className="text-2xl font-semibold text-slate-900">{utilization.data.totals.totalRooms}</div>
-                <div className="text-xs text-slate-500">Rooms</div>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <div className="text-2xl font-semibold text-slate-900">
-                  {utilization.data.totals.totalReservations}
-                </div>
-                <div className="text-xs text-slate-500">Reservations</div>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <div className="text-2xl font-semibold text-slate-900">
-                  {utilization.data.totals.totalBookedHours}h
-                </div>
-                <div className="text-xs text-slate-500">Booked hours</div>
-              </div>
+              <StatTile value={utilization.data.totals.totalRooms} label="Rooms" />
+              <StatTile value={utilization.data.totals.totalReservations} label="Reservations" />
+              <StatTile value={`${utilization.data.totals.totalBookedHours}h`} label="Booked hours" />
             </div>
             <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
               <table className="w-full text-sm">

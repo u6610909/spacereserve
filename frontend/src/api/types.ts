@@ -82,3 +82,10 @@ export interface UtilizationStats {
     totalBookedHours: number;
   };
 }
+
+export interface SystemOverview {
+  usersByRole: Record<Role, number>;
+  rooms: { available: number; outOfOrder: number };
+  reservations: { upcoming: number };
+  apiKeys: { name: string; lastUsedAt: string | null }[];
+}
