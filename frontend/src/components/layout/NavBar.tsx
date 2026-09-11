@@ -107,32 +107,38 @@ export function NavBar() {
 
   return (
     <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-2.5">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="mx-auto max-w-6xl px-4 py-2.5">
+        {/* Logo and the profile menu stay on one row and pinned to the two
+            ends no matter the viewport — only two items, so `justify-between`
+            never mis-wraps. Nav links get their own row below so THEY can
+            wrap freely on narrow screens without dragging the profile
+            trigger away from the right edge (it was landing far-left on a
+            wrapped line, which sent its `right-0` dropdown off-screen). */}
+        <div className="flex items-center justify-between gap-4">
           <NavLink to="/rooms" className="flex items-center gap-2 text-brand-700">
             <Logo className="h-6 w-6" />
-            <span className="text-base font-semibold tracking-tight">SpaceReserve</span>
+            <span className="font-display text-base font-semibold">SpaceReserve</span>
           </NavLink>
-          <nav className="flex flex-wrap items-center gap-1">
-            <NavLink to="/rooms" className={linkClasses}>
-              Rooms
-            </NavLink>
-            <NavLink to="/reservations" className={linkClasses}>
-              My reservations
-            </NavLink>
-            {(user.role === 'STAFF' || user.role === 'ADMIN') && (
-              <NavLink to="/manage/rooms" className={linkClasses}>
-                Manage rooms
-              </NavLink>
-            )}
-            {user.role === 'ADMIN' && (
-              <NavLink to="/admin" className={linkClasses}>
-                Admin
-              </NavLink>
-            )}
-          </nav>
+          <ProfileMenu name={user.name} role={user.role} onSignOut={() => void handleLogout()} />
         </div>
-        <ProfileMenu name={user.name} role={user.role} onSignOut={() => void handleLogout()} />
+        <nav className="mt-2 flex flex-wrap items-center gap-1">
+          <NavLink to="/rooms" className={linkClasses}>
+            Rooms
+          </NavLink>
+          <NavLink to="/reservations" className={linkClasses}>
+            My reservations
+          </NavLink>
+          {(user.role === 'STAFF' || user.role === 'ADMIN') && (
+            <NavLink to="/manage/rooms" className={linkClasses}>
+              Manage rooms
+            </NavLink>
+          )}
+          {user.role === 'ADMIN' && (
+            <NavLink to="/admin" className={linkClasses}>
+              Admin
+            </NavLink>
+          )}
+        </nav>
       </div>
     </header>
   );

@@ -129,7 +129,7 @@ export function RoomsBrowsePage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Find a room</h1>
+        <h1 className="font-display text-3xl font-semibold text-slate-900">Find a room</h1>
         <p className="mt-1 text-sm text-slate-500">
           {isLoading
             ? 'Loading the campus room list…'

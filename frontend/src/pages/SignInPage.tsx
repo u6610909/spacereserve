@@ -55,10 +55,12 @@ export function SignInPage() {
       <div className="hidden flex-col justify-between bg-brand-700 p-12 text-white lg:flex">
         <div className="flex items-center gap-2">
           <Logo className="h-7 w-7" />
-          <span className="text-lg font-semibold tracking-tight">SpaceReserve</span>
+          <span className="font-display text-lg font-semibold">SpaceReserve</span>
         </div>
         <div className="max-w-md">
-          <h1 className="text-3xl font-semibold leading-tight">Campus rooms, booked without the paperwork.</h1>
+          <h1 className="font-display text-4xl font-semibold leading-[1.1]">
+            Campus rooms, booked without the paperwork.
+          </h1>
           <ul className="mt-8 flex flex-col gap-3 text-sm text-brand-100">
             {HIGHLIGHTS.map((h) => (
               <li key={h} className="flex items-start gap-2.5">
@@ -84,7 +86,7 @@ export function SignInPage() {
         <div className="w-full max-w-sm">
           <div className="flex items-center gap-2 text-brand-700 lg:hidden">
             <Logo className="h-7 w-7" />
-            <span className="text-lg font-semibold tracking-tight">SpaceReserve</span>
+            <span className="font-display text-lg font-semibold">SpaceReserve</span>
           </div>
 
           <h2 className="mt-8 text-xl font-semibold text-slate-900 lg:mt-0">Sign in</h2>

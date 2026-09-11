@@ -151,7 +151,7 @@ export function MyReservationsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">My reservations</h1>
+        <h1 className="font-display text-3xl font-semibold text-slate-900">My reservations</h1>
         <p className="mt-1 text-sm text-slate-500">Rooms you&apos;ve booked or been invited to.</p>
       </div>
 

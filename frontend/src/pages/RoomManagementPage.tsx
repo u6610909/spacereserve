@@ -178,34 +178,34 @@ function BuildingSection({
       </summary>
 
       <div className="overflow-x-auto border-t border-slate-200">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-xs font-medium uppercase text-slate-500">
             <tr>
-              <th className="px-4 py-2">Photo</th>
-              <th className="px-4 py-2">Name</th>
-              <th className="px-4 py-2">Capacity</th>
-              <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2" />
+              <th className="whitespace-nowrap px-4 py-2">Photo</th>
+              <th className="whitespace-nowrap px-4 py-2">Name</th>
+              <th className="whitespace-nowrap px-4 py-2">Capacity</th>
+              <th className="whitespace-nowrap px-4 py-2">Status</th>
+              <th className="whitespace-nowrap px-4 py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rooms.map((room) => (
               <tr key={room.id}>
-                <td className="px-4 py-2">
+                <td className="whitespace-nowrap px-4 py-2">
                   <RoomImage src={room.imageUrl} alt={room.name} className="w-14" />
                 </td>
-                <td className="px-4 py-2">
+                <td className="whitespace-nowrap px-4 py-2">
                   <div className="font-medium text-slate-900">{room.name}</div>
                   {room.code && <div className="font-mono text-xs text-slate-400">{room.code}</div>}
                 </td>
-                <td className="px-4 py-2 text-slate-600">{room.capacity}</td>
-                <td className="px-4 py-2">
+                <td className="whitespace-nowrap px-4 py-2 text-slate-600">{room.capacity}</td>
+                <td className="whitespace-nowrap px-4 py-2">
                   <Badge tone={room.status === 'AVAILABLE' ? 'green' : 'red'}>
                     {room.status === 'AVAILABLE' ? 'Available' : 'Out of order'}
                   </Badge>
                 </td>
-                <td className="px-4 py-2">
-                  <div className="flex flex-wrap items-center justify-end gap-2">
+                <td className="whitespace-nowrap px-4 py-2">
+                  <div className="flex flex-nowrap items-center justify-end gap-2">
                     <Button type="button" variant="ghost" onClick={() => onEdit(room.id)}>
                       Edit
                     </Button>
@@ -292,7 +292,7 @@ export function RoomManagementPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Manage rooms</h1>
+          <h1 className="font-display text-3xl font-semibold text-slate-900">Manage rooms</h1>
           <p className="mt-1 text-sm text-slate-500">
             {isLoading
               ? 'Loading…'
