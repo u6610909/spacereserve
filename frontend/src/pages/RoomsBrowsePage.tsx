@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
 import { naturalSearch } from '../api/search';
+import type { RoomBusyInterval } from '../api/rooms';
 import type { Room } from '../api/types';
 import { AmenityIcon } from '../components/ui/AmenityIcon';
 import { Badge } from '../components/ui/Badge';
@@ -11,7 +12,8 @@ import { ErrorBanner } from '../components/ui/ErrorBanner';
 import { Input } from '../components/ui/Input';
 import { RoomImage } from '../components/ui/RoomImage';
 import { amenityLabel } from '../lib/amenities';
-import { useRooms } from '../hooks/useRooms';
+import { formatBangkokTime, maxBookableDateBangkok, todayBangkok } from '../lib/bangkokTime';
+import { useRooms, useRoomsAvailability } from '../hooks/useRooms';
 
 function PeopleIcon({ className = 'h-3.5 w-3.5' }: { className?: string }) {
   return (
@@ -25,7 +27,31 @@ function PeopleIcon({ className = 'h-3.5 w-3.5' }: { className?: string }) {
   );
 }
 
-function RoomCard({ room }: { room: Room }) {
+/** "Free all day" or the day's busy windows — for whichever date the
+ * browse list is currently previewing, not necessarily today. */
+function BusyOverview({ busy }: { busy: RoomBusyInterval[] }) {
+  if (busy.length === 0) {
+    return <span className="text-emerald-700">Free all day</span>;
+  }
+  const shown = busy.slice(0, 2);
+  return (
+    <span className="text-slate-500">
+      Booked {shown.map((b) => `${formatBangkokTime(b.startTime)}–${formatBangkokTime(b.endTime)}`).join(', ')}
+      {busy.length > shown.length && ` +${busy.length - shown.length} more`}
+    </span>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-3.5 w-3.5 shrink-0 text-slate-400">
+      <circle cx="12" cy="12" r="8.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+
+function RoomCard({ room, busy }: { room: Room; busy?: RoomBusyInterval[] }) {
   const outOfOrder = room.status !== 'AVAILABLE';
   return (
     <Link
@@ -49,6 +75,12 @@ function RoomCard({ room }: { room: Room }) {
           <PeopleIcon />
           Seats {room.capacity}
         </div>
+        {!outOfOrder && busy && (
+          <div className="flex items-center gap-1.5 text-xs">
+            <ClockIcon />
+            <BusyOverview busy={busy} />
+          </div>
+        )}
         {room.amenities.length > 0 && (
           <div className="mt-auto flex flex-wrap gap-x-3 gap-y-1 border-t border-slate-100 pt-2.5">
             {room.amenities.slice(0, 4).map((a) => (
@@ -85,12 +117,22 @@ export function RoomsBrowsePage() {
   const [building, setBuilding] = useState('');
   const [activeAmenities, setActiveAmenities] = useState<string[]>([]);
   const [query, setQuery] = useState('');
+  const [overviewDate, setOverviewDate] = useState(todayBangkok());
 
   // Fetch the full list once (no server filter) so the building/amenity
   // choices come from real data; capacity + amenity + building filtering is
   // then applied client-side for instant feedback.
   const { data, isLoading, error } = useRooms({});
   const search = useMutation({ mutationFn: (q: string) => naturalSearch(q) });
+
+  // Per-room busy hours for whichever day the visitor is previewing — one
+  // batched request rather than one per card.
+  const availability = useRoomsAvailability(overviewDate);
+  const busyByRoom = useMemo(() => {
+    const map = new Map<string, { startTime: string; endTime: string }[]>();
+    for (const r of availability.data?.rooms ?? []) map.set(r.roomId, r.busy);
+    return map;
+  }, [availability.data]);
 
   const serverRooms = data?.rooms;
   const allRooms = useMemo(() => search.data?.rooms ?? serverRooms ?? [], [search.data, serverRooms]);
@@ -176,6 +218,18 @@ export function RoomsBrowsePage() {
       )}
       <ErrorBanner error={search.error} />
       <ErrorBanner error={error} />
+
+      <label className="flex w-fit items-center gap-2 text-sm">
+        <span className="font-medium text-slate-700">Availability overview for</span>
+        <input
+          type="date"
+          value={overviewDate}
+          min={todayBangkok()}
+          max={maxBookableDateBangkok(14)}
+          onChange={(e) => setOverviewDate(e.target.value)}
+          className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+        />
+      </label>
 
       {!searching && (
         <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4">
@@ -263,7 +317,11 @@ export function RoomsBrowsePage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {rooms.map((room) => (
-            <RoomCard key={room.id} room={room} />
+            <RoomCard
+              key={room.id}
+              room={room}
+              busy={availability.isLoading ? undefined : (busyByRoom.get(room.id) ?? [])}
+            />
           ))}
         </div>
       )}

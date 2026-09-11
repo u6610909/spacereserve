@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "frontend/src/pages/RoomDetailPage.tsx"
+        ],
+        "createdAt": "2026-09-11T21:02:38.846Z",
+        "reason": "false positive: hover:text-red-600 fires together with hover:bg-red-50 on the attendee-remove button, so text is never gray on the colored background"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "frontend/src/pages/MyReservationsPage.tsx"
+        ],
+        "createdAt": "2026-09-11T21:03:19.915Z",
+        "reason": "false positive: hover:text-red-600 fires together with hover:bg-red-50 on the attendee-remove button, so text is never gray on the colored background"
+      }
+    ]
+  }
+}

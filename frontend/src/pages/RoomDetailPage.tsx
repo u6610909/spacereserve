@@ -1,21 +1,55 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { searchUserByEmail } from '../api/users';
+import type { RoomBusyInterval } from '../api/rooms';
 import type { UserLookupResult } from '../api/users';
 import { AmenityIcon } from '../components/ui/AmenityIcon';
+import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { ErrorBanner } from '../components/ui/ErrorBanner';
 import { Input } from '../components/ui/Input';
 import { RoomImage } from '../components/ui/RoomImage';
 import { Spinner } from '../components/ui/Spinner';
+import {
+  bangkokDateTimeToIso,
+  formatBangkokTime,
+  generateTimeSlots,
+  MAX_SLOT_COUNT,
+  maxBookableDateBangkok,
+  todayBangkok,
+} from '../lib/bangkokTime';
 import { amenityLabel } from '../lib/amenities';
 import { useCreateReservation } from '../hooks/useReservations';
-import { useRoom } from '../hooks/useRooms';
+import { useRoom, useRoomSchedule } from '../hooks/useRooms';
+import type { TimeSlot } from '../lib/bangkokTime';
 
 type Invitee = UserLookupResult;
+
+interface Selection {
+  startIdx: number;
+  length: number;
+}
+
+const TIME_SLOTS = generateTimeSlots();
+const MAX_ADVANCE_DAYS = 14;
+
+function slotStartMs(date: string, slot: TimeSlot): number {
+  return new Date(bangkokDateTimeToIso(date, slot.startLabel)).getTime();
+}
+
+function slotEndMs(date: string, slot: TimeSlot): number {
+  return new Date(bangkokDateTimeToIso(date, slot.endLabel)).getTime();
+}
+
+function isSlotBusy(date: string, slot: TimeSlot, busy: RoomBusyInterval[], now: number): boolean {
+  const start = slotStartMs(date, slot);
+  const end = slotEndMs(date, slot);
+  if (start <= now) return true; // can't book a slot that's already started/passed
+  return busy.some((b) => start < new Date(b.endTime).getTime() && end > new Date(b.startTime).getTime());
+}
 
 function PinIcon() {
   return (
@@ -93,7 +127,12 @@ function AttendeeInvite({
               <span>
                 {u.name} <span className="text-slate-400">({u.email})</span>
               </span>
-              <button type="button" onClick={() => onRemove(u.id)} className="text-slate-400 hover:text-red-600">
+              <button
+                type="button"
+                onClick={() => onRemove(u.id)}
+                aria-label={`Remove ${u.name}`}
+                className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+              >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
                   <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
                 </svg>
@@ -106,34 +145,143 @@ function AttendeeInvite({
   );
 }
 
+function TodaysSchedule({ roomId, date }: { roomId: string; date: string }) {
+  const schedule = useRoomSchedule(roomId, date);
+
+  return (
+    <div>
+      <div className="mb-2 text-xs font-medium uppercase text-slate-500">Booked on this day</div>
+      {schedule.isLoading ? (
+        <Spinner label="Checking the schedule…" />
+      ) : schedule.data && schedule.data.bookings.length === 0 ? (
+        <p className="text-sm text-emerald-700">Free all day so far.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {schedule.data?.bookings.map((b, i) => (
+            <li key={i} className="flex items-center gap-2 rounded-md bg-slate-50 px-2.5 py-2 text-sm">
+              <Avatar name={b.organizerName} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium text-slate-800">{b.organizerName}</div>
+                <div className="text-xs text-slate-500">
+                  {formatBangkokTime(b.startTime)}–{formatBangkokTime(b.endTime)}
+                  {b.attendeeNames.length > 0 && (
+                    <span title={b.attendeeNames.join(', ')}> · +{b.attendeeNames.length} invited</span>
+                  )}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function TimeSlotGrid({
+  date,
+  busy,
+  selection,
+  onSelect,
+}: {
+  date: string;
+  busy: RoomBusyInterval[];
+  selection: Selection | null;
+  onSelect: (index: number, busy: boolean) => void;
+}) {
+  // Snapshotted once on mount, not read fresh on every render — a slot only
+  // needs to flip from bookable to past at a coarse grain.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-time snapshot
+  const now = useMemo(() => Date.now(), []);
+
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="text-xs font-medium uppercase text-slate-500">Pick a time (max 2 hours)</span>
+        <span className="text-xs text-slate-400">09:00–20:00</span>
+      </div>
+      <div className="grid max-h-56 grid-cols-3 gap-1.5 overflow-y-auto pr-0.5">
+        {TIME_SLOTS.map((slot) => {
+          const taken = isSlotBusy(date, slot, busy, now);
+          const selected =
+            selection !== null && slot.index >= selection.startIdx && slot.index < selection.startIdx + selection.length;
+          return (
+            <button
+              key={slot.index}
+              type="button"
+              disabled={taken}
+              title={`${slot.startLabel}–${slot.endLabel}`}
+              onClick={() => onSelect(slot.index, taken)}
+              className={`rounded-md border px-2 py-1.5 text-xs font-medium transition ${
+                taken
+                  ? 'cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300'
+                  : selected
+                    ? 'border-brand-600 bg-brand-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50'
+              }`}
+            >
+              {slot.startLabel}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function RoomDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data, isLoading, error } = useRoom(id);
   const createReservation = useCreateReservation();
 
-  const [date, setDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [date, setDate] = useState(todayBangkok());
+  const [selection, setSelection] = useState<Selection | null>(null);
   const [purpose, setPurpose] = useState('');
   const [invitees, setInvitees] = useState<Invitee[]>([]);
+
+  // A slot's meaning is date-scoped (busy/free depends on the day), so
+  // switching dates clears any selection. Reset during render rather than
+  // in an effect — no need for the extra render pass an effect would add.
+  const [selectionDate, setSelectionDate] = useState(date);
+  if (date !== selectionDate) {
+    setSelectionDate(date);
+    setSelection(null);
+  }
+
+  const schedule = useRoomSchedule(id, date);
+  const busy = useMemo(() => schedule.data?.bookings.map((b) => ({ startTime: b.startTime, endTime: b.endTime })) ?? [], [schedule.data]);
 
   if (isLoading) return <Spinner label="Loading room…" />;
   if (error || !data) return <ErrorBanner error={error ?? 'Room not found'} />;
 
   const { room } = data;
   const isAvailable = room.status === 'AVAILABLE';
+  const maxDate = maxBookableDateBangkok(MAX_ADVANCE_DAYS);
+
+  function handleSlotSelect(index: number, taken: boolean) {
+    if (taken) return;
+    setSelection((prev) => {
+      if (!prev) return { startIdx: index, length: 1 };
+      const lastIdx = prev.startIdx + prev.length - 1;
+      if (index === lastIdx && prev.length > 1) return { ...prev, length: prev.length - 1 };
+      if (index === prev.startIdx && prev.length > 1) return { startIdx: prev.startIdx + 1, length: prev.length - 1 };
+      if (index === lastIdx + 1 && prev.length < MAX_SLOT_COUNT) return { ...prev, length: prev.length + 1 };
+      if (index === prev.startIdx - 1 && prev.length < MAX_SLOT_COUNT) return { startIdx: index, length: prev.length + 1 };
+      return { startIdx: index, length: 1 };
+    });
+  }
+
+  const selectedStart = selection ? TIME_SLOTS[selection.startIdx] : undefined;
+  const selectedEnd = selection ? TIME_SLOTS[selection.startIdx + selection.length - 1] : undefined;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!date || !startTime) return;
-    const start = new Date(`${date}T${startTime}`);
-    const end = new Date(start.getTime() + durationMinutes * 60_000);
+    if (!selectedStart || !selectedEnd) return;
 
     await createReservation.mutateAsync({
       roomId: room.id,
-      startTime: start.toISOString(),
-      endTime: end.toISOString(),
+      startTime: bangkokDateTimeToIso(date, selectedStart.startLabel),
+      endTime: bangkokDateTimeToIso(date, selectedEnd.endLabel),
       purpose: purpose || undefined,
       attendeeIds: invitees.map((u) => u.id),
     });
@@ -199,26 +347,35 @@ export function RoomDetailPage() {
           <div className="sticky top-20 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-slate-900">Reserve this room</h2>
             {isAvailable ? (
-              <form onSubmit={(e) => void handleSubmit(e)} className="mt-3 flex flex-col gap-3">
-                <div className="flex gap-2">
-                  <Input type="date" label="Date" required value={date} onChange={(e) => setDate(e.target.value)} />
-                  <Input
-                    type="time"
-                    label="Start"
-                    required
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </div>
+              <form onSubmit={(e) => void handleSubmit(e)} className="mt-3 flex flex-col gap-4">
                 <Input
-                  type="number"
-                  label="Duration (minutes, max 240)"
-                  min={15}
-                  max={240}
-                  step={15}
-                  value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                  type="date"
+                  label="Date"
+                  required
+                  value={date}
+                  min={todayBangkok()}
+                  max={maxDate}
+                  onChange={(e) => setDate(e.target.value)}
                 />
+
+                <div className="border-t border-slate-100 pt-4">
+                  <TodaysSchedule roomId={room.id} date={date} />
+                </div>
+
+                <div className="border-t border-slate-100 pt-4">
+                  <TimeSlotGrid date={date} busy={busy} selection={selection} onSelect={handleSlotSelect} />
+                  <p className="mt-2 text-sm text-slate-600">
+                    {selectedStart && selectedEnd ? (
+                      <>
+                        Selected <span className="font-medium text-slate-900">{selectedStart.startLabel}–{selectedEnd.endLabel}</span>{' '}
+                        ({selection!.length * 30} min)
+                      </>
+                    ) : (
+                      'Pick a start time above.'
+                    )}
+                  </p>
+                </div>
+
                 <Input label="Purpose (optional)" value={purpose} onChange={(e) => setPurpose(e.target.value)} />
                 <AttendeeInvite
                   invitees={invitees}
@@ -226,7 +383,7 @@ export function RoomDetailPage() {
                   onRemove={(uid) => setInvitees((prev) => prev.filter((u) => u.id !== uid))}
                 />
                 <ErrorBanner error={createReservation.error} />
-                <Button type="submit" className="w-full" disabled={createReservation.isPending}>
+                <Button type="submit" className="w-full" disabled={!selection || createReservation.isPending}>
                   {createReservation.isPending ? 'Booking…' : 'Book room'}
                 </Button>
               </form>

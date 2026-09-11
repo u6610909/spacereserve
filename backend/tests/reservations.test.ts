@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { config } from '../src/config';
 import { disconnectPrisma, getPrisma } from '../src/lib/prisma';
@@ -37,9 +37,19 @@ beforeAll(async () => {
   app = await buildTestApp();
 });
 
+// Reservations now must fall within 09:00–20:00 Asia/Bangkok — frozen here
+// at 09:00 Bangkok so every hoursFromNow() offset below is deterministic
+// regardless of the real time the suite happens to run at. Only Date is
+// faked (not timers), so supertest's own async plumbing is untouched.
 beforeEach(async () => {
   await resetDb();
   vi.clearAllMocks();
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-06-15T02:00:00.000Z')); // 09:00 Bangkok (UTC+7)
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 afterAll(async () => {
@@ -133,15 +143,75 @@ describe('POST /reservations — business rules', () => {
     expect(res.status).toBe(400);
   });
 
-  it('rejects a reservation longer than 4 hours', async () => {
+  it('rejects a reservation longer than 2 hours', async () => {
     const organizer = await loginAs('toolong@res.test', 'STUDENT');
     const room = await getPrisma().room.create({ data: { name: 'Long Room', building: 'B', capacity: 4 } });
 
     const res = await request(app)
       .post(`${config.basePath}/reservations`)
       .set('Authorization', `Bearer ${organizer.token}`)
-      .send({ roomId: room.id, startTime: hoursFromNow(2), endTime: hoursFromNow(7) });
+      .send({ roomId: room.id, startTime: hoursFromNow(2), endTime: hoursFromNow(4.5) });
     expect(res.status).toBe(400);
+  });
+
+  it('allows exactly a 2-hour reservation', async () => {
+    const organizer = await loginAs('exactly2h@res.test', 'STUDENT');
+    const room = await getPrisma().room.create({ data: { name: 'Exactly2h Room', building: 'B', capacity: 4 } });
+
+    const res = await request(app)
+      .post(`${config.basePath}/reservations`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({ roomId: room.id, startTime: hoursFromNow(2), endTime: hoursFromNow(4) });
+    expect(res.status).toBe(201);
+  });
+
+  it('rejects a reservation starting before 09:00 Bangkok time', async () => {
+    const organizer = await loginAs('tooearly@res.test', 'STUDENT');
+    const room = await getPrisma().room.create({ data: { name: 'Early Room', building: 'B', capacity: 4 } });
+
+    // "now" is frozen at 09:00 Bangkok; tomorrow 08:00 Bangkok is 1am UTC.
+    const start = new Date('2026-06-16T01:00:00.000Z');
+    const end = new Date('2026-06-16T02:00:00.000Z');
+    const res = await request(app)
+      .post(`${config.basePath}/reservations`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({ roomId: room.id, startTime: start, endTime: end });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a reservation ending after 20:00 Bangkok time', async () => {
+    const organizer = await loginAs('toolate@res.test', 'STUDENT');
+    const room = await getPrisma().room.create({ data: { name: 'Late Room', building: 'B', capacity: 4 } });
+
+    // Tomorrow 19:30–20:30 Bangkok — crosses the 20:00 close.
+    const start = new Date('2026-06-16T12:30:00.000Z');
+    const end = new Date('2026-06-16T13:30:00.000Z');
+    const res = await request(app)
+      .post(`${config.basePath}/reservations`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({ roomId: room.id, startTime: start, endTime: end });
+    expect(res.status).toBe(400);
+  });
+
+  it('allows a reservation right at the 09:00 open and 20:00 close edges', async () => {
+    const organizer = await loginAs('edges@res.test', 'STUDENT');
+    const room = await getPrisma().room.create({ data: { name: 'Edges Room', building: 'B', capacity: 4 } });
+
+    const openStart = new Date('2026-06-16T02:00:00.000Z'); // 09:00 Bangkok
+    const openEnd = new Date('2026-06-16T03:00:00.000Z');
+    const atOpen = await request(app)
+      .post(`${config.basePath}/reservations`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({ roomId: room.id, startTime: openStart, endTime: openEnd });
+    expect(atOpen.status).toBe(201);
+
+    const closeStart = new Date('2026-06-16T12:00:00.000Z'); // 19:00 Bangkok
+    const closeEnd = new Date('2026-06-16T13:00:00.000Z'); // 20:00 Bangkok
+    const atClose = await request(app)
+      .post(`${config.basePath}/reservations`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({ roomId: room.id, startTime: closeStart, endTime: closeEnd });
+    expect(atClose.status).toBe(201);
   });
 
   it('rejects a reservation more than 14 days out', async () => {

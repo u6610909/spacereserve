@@ -49,3 +49,14 @@ export const listRoomsQuerySchema = z
   });
 
 export type ListRoomsQuery = z.infer<typeof listRoomsQuerySchema>;
+
+/** Shared by /rooms/availability (all rooms) and /rooms/:id/schedule (one
+ * room) — both default to "today" in Asia/Bangkok when omitted. */
+export const roomDateQuerySchema = z.object({
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD')
+    .optional(),
+});
+
+export type RoomDateQuery = z.infer<typeof roomDateQuerySchema>;

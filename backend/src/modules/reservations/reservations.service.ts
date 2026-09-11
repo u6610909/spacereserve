@@ -1,3 +1,5 @@
+import { DateTime } from 'luxon';
+
 import { Prisma, type Reservation, type Role } from '@prisma/client';
 
 import { writeAuditLog } from '../../lib/audit';
@@ -13,9 +15,27 @@ import {
 
 import type { CreateReservationInput } from './reservations.schema';
 
-const MAX_DURATION_MS = 4 * 60 * 60 * 1000;
+const MAX_DURATION_MS = 2 * 60 * 60 * 1000;
 const MAX_ADVANCE_MS = 14 * 24 * 60 * 60 * 1000;
 const CHECKIN_WINDOW_BEFORE_MS = 15 * 60 * 1000;
+
+const BANGKOK_ZONE = 'Asia/Bangkok';
+const BOOKING_WINDOW_START_HOUR = 9; // 9:00
+const BOOKING_WINDOW_END_HOUR = 20; // 20:00 (2 ทุ่ม)
+
+/** Campus opening hours, not a UTC one — the room list's time-slot picker
+ * only ever offers 9:00–20:00 Bangkok, so this is a server-side backstop
+ * against a request built by hand or an old client. */
+function assertWithinBookingHours(startTime: Date, endTime: Date): void {
+  const start = DateTime.fromJSDate(startTime, { zone: BANGKOK_ZONE });
+  const end = DateTime.fromJSDate(endTime, { zone: BANGKOK_ZONE });
+  const windowStart = start.set({ hour: BOOKING_WINDOW_START_HOUR, minute: 0, second: 0, millisecond: 0 });
+  const windowEnd = start.set({ hour: BOOKING_WINDOW_END_HOUR, minute: 0, second: 0, millisecond: 0 });
+
+  if (!start.hasSame(end, 'day') || start < windowStart || end > windowEnd) {
+    throw new BadRequestError('Reservations must fall between 09:00 and 20:00 (Bangkok time), same day');
+  }
+}
 
 const reservationInclude = {
   room: true,
@@ -55,11 +75,12 @@ export async function createReservation(
   if (endTime <= startTime) throw new BadRequestError('endTime must be after startTime');
   if (startTime <= new Date()) throw new BadRequestError('Reservations must start in the future');
   if (endTime.getTime() - startTime.getTime() > MAX_DURATION_MS) {
-    throw new BadRequestError('Reservations cannot be longer than 4 hours');
+    throw new BadRequestError('Reservations cannot be longer than 2 hours');
   }
   if (startTime.getTime() - Date.now() > MAX_ADVANCE_MS) {
     throw new BadRequestError('Reservations cannot be made more than 14 days in advance');
   }
+  assertWithinBookingHours(startTime, endTime);
 
   const room = await getPrisma().room.findUnique({ where: { id: roomId } });
   if (!room) throw new NotFoundError('Room not found');

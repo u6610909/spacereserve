@@ -61,3 +61,33 @@ export function uploadRoomImage(id: string, file: File): Promise<{ room: Room }>
 export function deleteRoomImage(id: string): Promise<{ room: Room }> {
   return del(`/rooms/${id}/image`);
 }
+
+export interface RoomBusyInterval {
+  startTime: string;
+  endTime: string;
+}
+
+export interface RoomAvailabilityEntry {
+  roomId: string;
+  busy: RoomBusyInterval[];
+}
+
+/** Busy intervals for every room on one Bangkok calendar date, in a single
+ * request — the room browse grid needs this per-card, and one call per room
+ * would be an N+1. A room absent from `rooms` is free all day. */
+export function roomsAvailability(date: string): Promise<{ date: string; rooms: RoomAvailabilityEntry[] }> {
+  return get(`/rooms/availability?date=${date}`);
+}
+
+export interface RoomScheduleEntry {
+  startTime: string;
+  endTime: string;
+  organizerName: string;
+  attendeeNames: string[];
+}
+
+/** One room's bookings for a Bangkok calendar date — names only, no email,
+ * for the "who's in here today" view on the room detail page. */
+export function roomSchedule(roomId: string, date: string): Promise<{ date: string; bookings: RoomScheduleEntry[] }> {
+  return get(`/rooms/${roomId}/schedule?date=${date}`);
+}
