@@ -60,15 +60,28 @@ export async function updateRoom(actorId: string, id: string, input: UpdateRoomI
   return room;
 }
 
-export async function setRoomStatus(actorId: string, id: string, status: RoomStatus): Promise<Room> {
+/**
+ * `outOfOrderUntil` only takes effect when `status` is OUT_OF_ORDER — going
+ * back to AVAILABLE always clears it, so a stale "back by" date can never
+ * linger on a room that's actually fine again.
+ */
+export async function setRoomStatus(
+  actorId: string,
+  id: string,
+  status: RoomStatus,
+  outOfOrderUntil?: Date | null,
+): Promise<Room> {
   await getRoomById(id);
-  const room = await getPrisma().room.update({ where: { id }, data: { status } });
+  const room = await getPrisma().room.update({
+    where: { id },
+    data: { status, outOfOrderUntil: status === 'OUT_OF_ORDER' ? (outOfOrderUntil ?? null) : null },
+  });
   await writeAuditLog({
     actorId,
     action: 'ROOM_STATUS_CHANGED',
     entity: 'Room',
     entityId: room.id,
-    metadata: { status },
+    metadata: { status, outOfOrderUntil: room.outOfOrderUntil },
   });
   return room;
 }

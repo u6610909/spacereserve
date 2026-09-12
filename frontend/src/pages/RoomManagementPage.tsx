@@ -8,6 +8,7 @@ import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { RoomImage } from '../components/ui/RoomImage';
 import { Spinner } from '../components/ui/Spinner';
+import { bangkokDateOf, todayBangkok } from '../lib/bangkokTime';
 import {
   useCreateRoom,
   useDeleteRoom,
@@ -201,7 +202,9 @@ function BuildingSection({
                 <td className="whitespace-nowrap px-4 py-2 text-slate-600">{room.capacity}</td>
                 <td className="whitespace-nowrap px-4 py-2">
                   <Badge tone={room.status === 'AVAILABLE' ? 'green' : 'red'}>
-                    {room.status === 'AVAILABLE' ? 'Available' : 'Out of order'}
+                    {room.status === 'AVAILABLE'
+                      ? 'Available'
+                      : `Out of order${room.outOfOrderUntil ? ` until ${bangkokDateOf(room.outOfOrderUntil)}` : ''}`}
                   </Badge>
                 </td>
                 <td className="whitespace-nowrap px-4 py-2">
@@ -227,6 +230,48 @@ function BuildingSection({
   );
 }
 
+/** Return date is optional on purpose — leaving it blank keeps the old
+ * "unknown when it's back, every date blocked" behavior. Setting one means
+ * dates on/after it stay bookable even while this room is still marked out
+ * of order (see reservations.service.ts). */
+function TakeOutOfOrderModal({
+  room,
+  onClose,
+  onConfirm,
+  submitting,
+}: {
+  room: Room;
+  onClose: () => void;
+  onConfirm: (returnDate: string | null) => void;
+  submitting: boolean;
+}) {
+  const [returnDate, setReturnDate] = useState('');
+
+  return (
+    <Modal title={`Take "${room.name}" out of order`} onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onConfirm(returnDate || null);
+        }}
+        className="flex flex-col gap-3"
+      >
+        <Input
+          type="date"
+          label="Expected back in service (optional)"
+          hint="Leave blank if you don't know yet — the room stays fully blocked until you mark it available again. Set a date and it'll still show out of order, but people can book it starting that day."
+          min={todayBangkok()}
+          value={returnDate}
+          onChange={(e) => setReturnDate(e.target.value)}
+        />
+        <Button type="submit" variant="danger" disabled={submitting}>
+          {submitting ? 'Saving…' : 'Take out of order'}
+        </Button>
+      </form>
+    </Modal>
+  );
+}
+
 export function RoomManagementPage() {
   const { data, isLoading, error } = useRooms({});
   const createRoom = useCreateRoom();
@@ -241,6 +286,7 @@ export function RoomManagementPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const editing = data?.rooms.find((r) => r.id === editingId) ?? null;
   const [deleteError, setDeleteError] = useState<Record<string, unknown>>({});
+  const [takingOutOfOrder, setTakingOutOfOrder] = useState<Room | null>(null);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Room[]>();
@@ -273,10 +319,11 @@ export function RoomManagementPage() {
   }
 
   function toggleStatus(room: Room) {
-    setStatus.mutate({
-      id: room.id,
-      status: room.status === 'AVAILABLE' ? 'OUT_OF_ORDER' : ('AVAILABLE' as RoomStatus),
-    });
+    if (room.status === 'AVAILABLE') {
+      setTakingOutOfOrder(room); // ask for an optional return date first
+      return;
+    }
+    setStatus.mutate({ id: room.id, status: 'AVAILABLE' as RoomStatus });
   }
 
   async function handleDelete(room: Room) {
@@ -368,6 +415,20 @@ export function RoomManagementPage() {
             />
           </div>
         </Modal>
+      )}
+
+      {takingOutOfOrder && (
+        <TakeOutOfOrderModal
+          room={takingOutOfOrder}
+          submitting={setStatus.isPending}
+          onClose={() => setTakingOutOfOrder(null)}
+          onConfirm={(returnDate) =>
+            setStatus.mutate(
+              { id: takingOutOfOrder.id, status: 'OUT_OF_ORDER' as RoomStatus, outOfOrderUntil: returnDate },
+              { onSuccess: () => setTakingOutOfOrder(null) },
+            )
+          }
+        />
       )}
     </div>
   );

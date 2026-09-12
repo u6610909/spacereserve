@@ -14,6 +14,7 @@ import { Input } from '../components/ui/Input';
 import { RoomImage } from '../components/ui/RoomImage';
 import { Spinner } from '../components/ui/Spinner';
 import {
+  bangkokDateOf,
   bangkokDateTimeToIso,
   formatBangkokTime,
   generateTimeSlots,
@@ -287,6 +288,11 @@ export function RoomDetailPage() {
 
   const { room } = data;
   const isAvailable = room.status === 'AVAILABLE';
+  const returnDateBangkok = room.outOfOrderUntil ? bangkokDateOf(room.outOfOrderUntil) : null;
+  // A known return date only blocks dates before it — same rule the backend
+  // enforces in reservations.service.ts. No return date means every date
+  // stays blocked while OUT_OF_ORDER.
+  const bookableOnSelectedDate = isAvailable || (returnDateBangkok !== null && date >= returnDateBangkok);
   const maxDate = maxBookableDateBangkok(MAX_ADVANCE_DAYS);
 
   function handleSlotSelect(index: number, taken: boolean) {
@@ -341,7 +347,11 @@ export function RoomDetailPage() {
                   {room.code}
                 </span>
               )}
-              {!isAvailable && <Badge tone="red">Out of order</Badge>}
+              {!isAvailable && (
+                <Badge tone="red">
+                  Out of order{returnDateBangkok ? ` until ${returnDateBangkok}` : ''}
+                </Badge>
+              )}
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
               <PinIcon />
@@ -379,22 +389,24 @@ export function RoomDetailPage() {
         <div className="lg:col-span-1">
           <div className="sticky top-20 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-slate-900">Reserve this room</h2>
-            {isAvailable ? (
-              <form onSubmit={(e) => void handleSubmit(e)} className="mt-3 flex flex-col gap-4">
-                <Input
-                  type="date"
-                  label="Date"
-                  required
-                  value={date}
-                  min={todayBangkok()}
-                  max={maxDate}
-                  onChange={(e) => setDate(e.target.value)}
-                />
 
-                <div className="border-t border-slate-100 pt-4">
-                  <TodaysSchedule roomId={room.id} date={date} />
-                </div>
+            <Input
+              type="date"
+              label="Date"
+              required
+              value={date}
+              min={todayBangkok()}
+              max={maxDate}
+              onChange={(e) => setDate(e.target.value)}
+              className="mt-3"
+            />
 
+            <div className="border-t border-slate-100 pt-4">
+              <TodaysSchedule roomId={room.id} date={date} />
+            </div>
+
+            {bookableOnSelectedDate ? (
+              <form onSubmit={(e) => void handleSubmit(e)} className="mt-4 flex flex-col gap-4">
                 <div className="border-t border-slate-100 pt-4">
                   <TimeSlotGrid date={date} busy={busy} selection={selection} onSelect={handleSlotSelect} />
                   <p className="mt-2 text-sm text-slate-600">
@@ -421,8 +433,11 @@ export function RoomDetailPage() {
                 </Button>
               </form>
             ) : (
-              <p className="mt-2 text-sm text-red-600">
-                This room is out of order and can&apos;t be booked right now.
+              <p className="mt-4 border-t border-slate-100 pt-4 text-sm text-red-600">
+                This room is out of order on {date}
+                {returnDateBangkok
+                  ? ` — back in service from ${returnDateBangkok}. Pick a later date to book ahead.`
+                  : ' and can’t be booked right now.'}
               </p>
             )}
           </div>
