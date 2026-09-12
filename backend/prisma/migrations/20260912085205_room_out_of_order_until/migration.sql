@@ -1,0 +1,1 @@
+ALTER TABLE "Room" ADD COLUMN "outOfOrderUntil" TIMESTAMP(3);

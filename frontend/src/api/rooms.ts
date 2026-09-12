@@ -44,8 +44,12 @@ export function updateRoom(id: string, input: Partial<RoomInput>): Promise<{ roo
   return patch(`/rooms/${id}`, input);
 }
 
-export function setRoomStatus(id: string, status: RoomStatus): Promise<{ room: Room }> {
-  return patch(`/rooms/${id}/status`, { status });
+export function setRoomStatus(
+  id: string,
+  status: RoomStatus,
+  outOfOrderUntil?: string | null,
+): Promise<{ room: Room }> {
+  return patch(`/rooms/${id}/status`, { status, outOfOrderUntil });
 }
 
 export function deleteRoom(id: string): Promise<void> {
