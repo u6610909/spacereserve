@@ -66,7 +66,8 @@ export function useUpdateRoom() {
 export function useSetRoomStatus() {
   const invalidate = useInvalidateRooms();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: RoomStatus }) => roomsApi.setRoomStatus(id, status),
+    mutationFn: ({ id, status, outOfOrderUntil }: { id: string; status: RoomStatus; outOfOrderUntil?: string | null }) =>
+      roomsApi.setRoomStatus(id, status, outOfOrderUntil),
     onSuccess: invalidate,
   });
 }

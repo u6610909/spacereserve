@@ -45,8 +45,8 @@ export const update: RequestHandler = async (req, res, next) => {
 
 export const setStatus: RequestHandler = async (req, res, next) => {
   try {
-    const { status } = req.body as { status: RoomStatus };
-    const room = await roomsService.setRoomStatus(req.user!.id, req.params.id as string, status);
+    const { status, outOfOrderUntil } = req.body as { status: RoomStatus; outOfOrderUntil?: Date | null };
+    const room = await roomsService.setRoomStatus(req.user!.id, req.params.id as string, status, outOfOrderUntil);
     res.status(200).json({ room });
   } catch (err) {
     next(err);

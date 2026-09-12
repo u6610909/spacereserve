@@ -34,6 +34,13 @@ export function maxBookableDateBangkok(daysAhead: number): string {
   return bangkokDateFmt.format(today);
 }
 
+/** "2026-06-15" for any ISO instant, read in Bangkok — for comparing a room's
+ * `outOfOrderUntil` against a picked booking date (plain string compare,
+ * since both are YYYY-MM-DD). */
+export function bangkokDateOf(iso: string): string {
+  return bangkokDateFmt.format(new Date(iso));
+}
+
 /** A Bangkok calendar date + "HH:MM" wall-clock time, as an ISO instant. */
 export function bangkokDateTimeToIso(date: string, hhmm: string): string {
   return new Date(`${date}T${hhmm}:00${BANGKOK_OFFSET}`).toISOString();

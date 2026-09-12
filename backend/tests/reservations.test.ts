@@ -91,7 +91,7 @@ describe('POST /reservations — business rules', () => {
     expect(second.status).toBe(201);
   });
 
-  it('rejects booking an OUT_OF_ORDER room', async () => {
+  it('rejects booking an OUT_OF_ORDER room with no known return date', async () => {
     const organizer = await loginAs('outoforder@res.test', 'STUDENT');
     const room = await getPrisma().room.create({
       data: { name: 'Broken Room', building: 'B', capacity: 4, status: 'OUT_OF_ORDER' },
@@ -102,6 +102,44 @@ describe('POST /reservations — business rules', () => {
       .set('Authorization', `Bearer ${organizer.token}`)
       .send({ roomId: room.id, startTime: hoursFromNow(2), endTime: hoursFromNow(3) });
     expect(res.status).toBe(409);
+  });
+
+  it('rejects booking an OUT_OF_ORDER room for a date still before its return date', async () => {
+    const organizer = await loginAs('outoforder-future@res.test', 'STUDENT');
+    const room = await getPrisma().room.create({
+      data: {
+        name: 'Broken Room Future Return',
+        building: 'B',
+        capacity: 4,
+        status: 'OUT_OF_ORDER',
+        outOfOrderUntil: hoursFromNow(5), // after the attempted booking's start
+      },
+    });
+
+    const res = await request(app)
+      .post(`${config.basePath}/reservations`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({ roomId: room.id, startTime: hoursFromNow(2), endTime: hoursFromNow(3) });
+    expect(res.status).toBe(409);
+  });
+
+  it('allows booking an OUT_OF_ORDER room for a date on/after its return date', async () => {
+    const organizer = await loginAs('outoforder-returned@res.test', 'STUDENT');
+    const room = await getPrisma().room.create({
+      data: {
+        name: 'Broken Room Past Return',
+        building: 'B',
+        capacity: 4,
+        status: 'OUT_OF_ORDER',
+        outOfOrderUntil: hoursFromNow(1), // before the attempted booking's start
+      },
+    });
+
+    const res = await request(app)
+      .post(`${config.basePath}/reservations`)
+      .set('Authorization', `Bearer ${organizer.token}`)
+      .send({ roomId: room.id, startTime: hoursFromNow(2), endTime: hoursFromNow(3) });
+    expect(res.status).toBe(201);
   });
 
   it('rejects organizer + attendees exceeding room capacity', async () => {

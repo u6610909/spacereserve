@@ -51,6 +51,12 @@ model Room {
   capacity  Int
   amenities String[] // e.g. ["projector","whiteboard"]
   status    RoomStatus @default(AVAILABLE)
+  // Set only alongside OUT_OF_ORDER — lets staff give an expected return
+  // date so future dates on/after it stay bookable instead of the whole
+  // room going dark indefinitely. null while OUT_OF_ORDER means "unknown
+  // when it's back" (blocks every date, same as before this field existed).
+  // Always cleared back to null when status returns to AVAILABLE.
+  outOfOrderUntil DateTime?
   imageUrl  String? // served from /spacereserve/uploads/rooms/<file> — see rooms.service.ts
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
