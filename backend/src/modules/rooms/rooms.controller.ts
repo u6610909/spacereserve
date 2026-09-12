@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 
 import { BadRequestError } from '../../lib/errors';
+import { lookupLostItems } from '../../integrations/finderai';
 
 import * as roomsService from './rooms.service';
 import type { CreateRoomInput, ListRoomsQuery, UpdateRoomInput } from './rooms.schema';
@@ -95,6 +96,19 @@ export const schedule: RequestHandler = async (req, res, next) => {
     const { date } = req.query as { date?: string };
     const result = await roomsService.getRoomSchedule(req.params.id as string, date);
     res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** Same peer lookup check-in already does, just callable any time someone
+ * views the room — not gated on booking or checking in first. `items: null`
+ * (FinderAI unreachable) is a normal response, not an error. */
+export const lostItems: RequestHandler = async (req, res, next) => {
+  try {
+    const room = await roomsService.getRoomById(req.params.id as string);
+    const items = await lookupLostItems(room.name);
+    res.status(200).json({ items });
   } catch (err) {
     next(err);
   }

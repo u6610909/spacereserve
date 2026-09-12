@@ -215,3 +215,34 @@ describe('GET /rooms/:id/schedule', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('GET /rooms/:id/lost-items', () => {
+  it('any authenticated role can check — not gated on booking or checking in', async () => {
+    const token = await tokenFor('STUDENT');
+    const room = await getPrisma().room.create({ data: { name: 'Lost Items Room', building: 'B', capacity: 4 } });
+
+    const res = await request(app)
+      .get(`${config.basePath}/rooms/${room.id}/lost-items`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    // TEST_SECRETS leaves the FinderAI key blank on purpose, so this hits the
+    // mock client (always []), not null — proving the real degrade-to-mock
+    // path here too, not just at check-in.
+    expect((res.body as { items: unknown[] }).items).toEqual([]);
+  });
+
+  it('404s for a room that does not exist', async () => {
+    const token = await tokenFor('STUDENT');
+    const res = await request(app)
+      .get(`${config.basePath}/rooms/00000000-0000-0000-0000-000000000000/lost-items`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(404);
+  });
+
+  it('unauthenticated requests are rejected', async () => {
+    const room = await getPrisma().room.create({ data: { name: 'Lost Items Room 2', building: 'B', capacity: 4 } });
+    const res = await request(app).get(`${config.basePath}/rooms/${room.id}/lost-items`);
+    expect(res.status).toBe(401);
+  });
+});

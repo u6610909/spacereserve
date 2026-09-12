@@ -22,8 +22,9 @@ import {
   todayBangkok,
 } from '../lib/bangkokTime';
 import { amenityLabel } from '../lib/amenities';
+import { formatDateTime } from '../lib/format';
 import { useCreateReservation } from '../hooks/useReservations';
-import { useRoom, useRoomSchedule } from '../hooks/useRooms';
+import { useRoom, useRoomLostItems, useRoomSchedule } from '../hooks/useRooms';
 import type { TimeSlot } from '../lib/bangkokTime';
 
 type Invitee = UserLookupResult;
@@ -228,6 +229,36 @@ function TimeSlotGrid({
   );
 }
 
+/** Pulled from FinderAI on every view — not pushed to us, so a fresh item
+ * only shows up the next time someone loads this room's page (cached 60s
+ * server-side). `null` (FinderAI unreachable) and an empty list both render
+ * nothing — this is a heads-up when there's something to say, not a status
+ * indicator that must always show. */
+function LostItemsNotice({ roomId }: { roomId: string }) {
+  const lostItems = useRoomLostItems(roomId);
+  const items = lostItems.data?.items;
+
+  if (!items || items.length === 0) return null;
+
+  return (
+    <div className="border-t border-slate-200 pt-5">
+      <h2 className="mb-3 text-sm font-semibold text-slate-900">Reported lost near this room</h2>
+      <ul className="flex flex-col gap-2">
+        {items.map((item) => (
+          <li key={item.id} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium text-amber-900">{item.title}</span>
+              <span className="text-xs font-medium uppercase text-amber-700">{item.category}</span>
+            </div>
+            <p className="mt-0.5 text-sm text-amber-800">{item.description}</p>
+            <p className="mt-1 text-xs text-amber-600">Reported {formatDateTime(item.createdAt)}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function RoomDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -341,6 +372,8 @@ export function RoomDetailPage() {
               </div>
             </div>
           )}
+
+          <LostItemsNotice roomId={room.id} />
         </div>
 
         <div className="lg:col-span-1">
