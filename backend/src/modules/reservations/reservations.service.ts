@@ -84,7 +84,12 @@ export async function createReservation(
 
   const room = await getPrisma().room.findUnique({ where: { id: roomId } });
   if (!room) throw new NotFoundError('Room not found');
-  if (room.status === 'OUT_OF_ORDER') throw new ConflictError('Room is out of order');
+  // A known return date only blocks dates before it — a room down for a day
+  // shouldn't take next week off the board too. No date (`outOfOrderUntil`
+  // null) means "unknown when it's back", so every date stays blocked.
+  if (room.status === 'OUT_OF_ORDER' && (!room.outOfOrderUntil || startTime < room.outOfOrderUntil)) {
+    throw new ConflictError('Room is out of order');
+  }
 
   const uniqueAttendeeIds = Array.from(new Set(attendeeIds)).filter((id) => id !== actorId);
   assertCapacity(room.capacity, 1 + uniqueAttendeeIds.length);

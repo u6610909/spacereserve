@@ -68,6 +68,30 @@ describe('rooms RBAC', () => {
     expect((status.body as { room: { status: string } }).room.status).toBe('OUT_OF_ORDER');
   });
 
+  it('accepts an outOfOrderUntil return date, and clears it when marked available again', async () => {
+    const token = await tokenFor('STAFF');
+    const room = await getPrisma().room.create({ data: { name: 'Return Date Room', building: 'B', capacity: 4 } });
+    const returnDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+
+    const outOfOrder = await request(app)
+      .patch(`${config.basePath}/rooms/${room.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'OUT_OF_ORDER', outOfOrderUntil: returnDate });
+    expect(outOfOrder.status).toBe(200);
+    const outOfOrderBody = outOfOrder.body as { room: { status: string; outOfOrderUntil: string | null } };
+    expect(outOfOrderBody.room.status).toBe('OUT_OF_ORDER');
+    expect(outOfOrderBody.room.outOfOrderUntil).toBe(returnDate);
+
+    const backToAvailable = await request(app)
+      .patch(`${config.basePath}/rooms/${room.id}/status`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'AVAILABLE' });
+    expect(backToAvailable.status).toBe(200);
+    const availableBody = backToAvailable.body as { room: { status: string; outOfOrderUntil: string | null } };
+    expect(availableBody.room.status).toBe('AVAILABLE');
+    expect(availableBody.room.outOfOrderUntil).toBeNull();
+  });
+
   it('ADMIN can delete a room with no reservations', async () => {
     const token = await tokenFor('ADMIN');
     const create = await request(app)

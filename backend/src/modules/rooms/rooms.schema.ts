@@ -20,7 +20,15 @@ export const updateRoomSchema = createRoomSchema.partial().refine((data) => Obje
 
 export type UpdateRoomInput = z.infer<typeof updateRoomSchema>;
 
-export const roomStatusSchema = z.object({ status: z.nativeEnum(RoomStatus) });
+/** `outOfOrderUntil` only means anything alongside status: OUT_OF_ORDER — an
+ * expected return date so bookings on/after it aren't blocked too. Omitted
+ * (or explicitly null) means "unknown when it's back", blocking every date,
+ * same as before this field existed. Ignored when setting AVAILABLE — the
+ * service always clears it there regardless of what's sent. */
+export const roomStatusSchema = z.object({
+  status: z.nativeEnum(RoomStatus),
+  outOfOrderUntil: z.coerce.date().nullable().optional(),
+});
 
 /** Query strings arrive as strings — coerce/split before the service sees them. */
 export const listRoomsQuerySchema = z

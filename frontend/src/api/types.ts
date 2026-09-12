@@ -17,6 +17,10 @@ export interface Room {
   capacity: number;
   amenities: string[];
   status: RoomStatus;
+  /** Only meaningful alongside status OUT_OF_ORDER — null means "unknown
+   * when it's back" (every date stays blocked); otherwise dates on/after
+   * this are bookable even while the room is still marked out of order. */
+  outOfOrderUntil: string | null;
   imageUrl: string | null;
   createdAt: string;
   updatedAt: string;
