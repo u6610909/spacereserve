@@ -128,6 +128,9 @@ export function NavBar() {
           <NavLink to="/reservations" className={linkClasses}>
             My reservations
           </NavLink>
+          <NavLink to="/lost-found" className={linkClasses}>
+            Lost &amp; found
+          </NavLink>
           {(user.role === 'STAFF' || user.role === 'ADMIN') && (
             <NavLink to="/manage/rooms" className={linkClasses}>
               Manage rooms

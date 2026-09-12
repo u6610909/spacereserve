@@ -5,6 +5,7 @@ import { RequireRole } from './auth/RequireRole';
 import { AppShell } from './components/layout/AppShell';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
+import { LostFoundPage } from './pages/LostFoundPage';
 import { MyReservationsPage } from './pages/MyReservationsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { RoomDetailPage } from './pages/RoomDetailPage';
@@ -24,6 +25,7 @@ export function App() {
           <Route path="/rooms" element={<RoomsBrowsePage />} />
           <Route path="/rooms/:id" element={<RoomDetailPage />} />
           <Route path="/reservations" element={<MyReservationsPage />} />
+          <Route path="/lost-found" element={<LostFoundPage />} />
 
           <Route element={<RequireRole allowed={['STAFF', 'ADMIN']} />}>
             <Route path="/manage/rooms" element={<RoomManagementPage />} />
