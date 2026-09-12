@@ -5,7 +5,19 @@ import { requireAuth } from '../../middleware/requireAuth';
 import { requireRole } from '../../middleware/requireRole';
 import { validate } from '../../middleware/validate';
 
-import { availability, create, getById, list, remove, removeImage, schedule, setImage, setStatus, update } from './rooms.controller';
+import {
+  availability,
+  create,
+  getById,
+  list,
+  lostItems,
+  remove,
+  removeImage,
+  schedule,
+  setImage,
+  setStatus,
+  update,
+} from './rooms.controller';
 import {
   createRoomSchema,
   listRoomsQuerySchema,
@@ -33,6 +45,7 @@ roomsRoutes.get(
   validate({ params: roomIdParamSchema, query: roomDateQuerySchema }),
   schedule,
 );
+roomsRoutes.get('/:id/lost-items', requireAuth, validate({ params: roomIdParamSchema }), lostItems);
 roomsRoutes.post('/', requireAuth, staffOrAdmin, validate({ body: createRoomSchema }), create);
 roomsRoutes.patch(
   '/:id',

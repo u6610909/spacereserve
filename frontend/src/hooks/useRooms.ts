@@ -34,6 +34,14 @@ export function useRoomSchedule(roomId: string | undefined, date: string) {
   });
 }
 
+export function useRoomLostItems(roomId: string | undefined) {
+  return useQuery({
+    queryKey: ['rooms', roomId, 'lost-items'],
+    queryFn: () => roomsApi.roomLostItems(roomId!),
+    enabled: Boolean(roomId),
+  });
+}
+
 function useInvalidateRooms() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: ['rooms'] });

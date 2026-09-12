@@ -1,5 +1,5 @@
 import { del, get, patch, post, postForm } from './client';
-import type { Room, RoomStatus } from './types';
+import type { LostItemNotice, Room, RoomStatus } from './types';
 
 export interface RoomFilters {
   capacity?: number;
@@ -90,4 +90,11 @@ export interface RoomScheduleEntry {
  * for the "who's in here today" view on the room detail page. */
 export function roomSchedule(roomId: string, date: string): Promise<{ date: string; bookings: RoomScheduleEntry[] }> {
   return get(`/rooms/${roomId}/schedule?date=${date}`);
+}
+
+/** Same FinderAI lookup check-in uses, callable any time someone views the
+ * room — not gated on booking first. `items: null` means FinderAI couldn't
+ * be reached, not that nothing was found. */
+export function roomLostItems(roomId: string): Promise<{ items: LostItemNotice[] | null }> {
+  return get(`/rooms/${roomId}/lost-items`);
 }
