@@ -15,6 +15,7 @@ import { adminRoutes } from './modules/admin/admin.routes';
 import { authRoutes } from './modules/auth/auth.routes';
 import { externalRoutes } from './modules/external/external.routes';
 import { healthRoutes } from './modules/health/health.routes';
+import { lostItemsRoutes } from './modules/lostItems/lostItems.routes';
 import { reservationsRoutes } from './modules/reservations/reservations.routes';
 import { roomsRoutes } from './modules/rooms/rooms.routes';
 import { searchRoutes } from './modules/search/search.routes';
@@ -82,6 +83,7 @@ export function createApp(): Express {
   api.use(healthRoutes);
   api.use('/auth', authRoutes);
   api.use('/rooms', roomsRoutes);
+  api.use('/lost-items', lostItemsRoutes);
   api.use('/users', usersRoutes);
   api.use('/reservations', reservationsRoutes);
   api.use('/search', searchRoutes);
